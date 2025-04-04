@@ -4,6 +4,7 @@ import javax.persistence.*;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import ch.uzh.ifi.hase.soprafs24.constant.FlashcardCategory;
 
 import java.io.Serializable;
 import java.time.LocalDate;
@@ -24,13 +25,16 @@ public class Flashcard implements Serializable {
     @ManyToOne
     @JoinColumn(name = "deck_id", nullable = false)
     @JsonIgnore
-    private Deck deck; 
+    private Deck deck;
 
     @Column(nullable = true)
     private LocalDate date;
 
     @Column(nullable = false)
     private String description;
+
+    @Column(nullable = true)
+    private FlashcardCategory flashcardCategory;
 
     @Column(nullable = false)
     @JsonProperty("wrong_answers")
@@ -51,7 +55,7 @@ public class Flashcard implements Serializable {
     public Deck getDeck() {
         return deck;
     }
-    
+
     public void setDeck(Deck deck) {
         this.deck = deck;
     }
@@ -86,6 +90,14 @@ public class Flashcard implements Serializable {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public FlashcardCategory getFlashcardCategory() {
+        return flashcardCategory;
+    }
+
+    public void setFlashcardCategory(FlashcardCategory flashcardCategory) {
+        this.flashcardCategory = flashcardCategory;
     }
 
     public String getAnswer() {
