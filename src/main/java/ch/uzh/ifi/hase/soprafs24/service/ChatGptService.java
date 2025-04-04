@@ -195,4 +195,40 @@ public class ChatGptService {
         }
     }
 
+    /**
+     * Extracts the generated flashcards JSON from the API response.
+     * Expects the output to be a JSON object containing the "flashcards" key.
+     */
+    public String extractGeneratedText(String jsonResponse) {
+        // Print raw JSON for debugging.
+//        System.out.println("Raw ChatGPT response: " + jsonResponse);
+        try {
+            JsonNode root = objectMapper.readTree(jsonResponse);
+            JsonNode output = root.path("output");
+            if (output.isArray() && output.size() > 0) {
+                JsonNode firstMessage = output.get(0);
+                JsonNode content = firstMessage.path("content");
+                if (content.isArray() && content.size() > 0) {
+                    JsonNode firstContent = content.get(0);
+                    String text = firstContent.path("text").asText();
+                    // Optionally print the extracted text.
+//                    System.out.println("Extracted text: " + text);
+                    // Validate that the text contains a "flashcards" key.
+                    JsonNode flashcardsJson = objectMapper.readTree(text);
+                    if (flashcardsJson.has("flashcards")) {
+                        return text;
+                    } else {
+                        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                                "The extracted text does not contain a 'flashcards' key: " + text);
+                    }
+                }
+            }
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Invalid response structure from ChatGPT: " + jsonResponse);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error parsing ChatGPT response: " + e.getMessage(), e);
+        }
+    }
+
 }
