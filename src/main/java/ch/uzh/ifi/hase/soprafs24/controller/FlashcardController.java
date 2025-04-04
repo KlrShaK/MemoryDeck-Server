@@ -1,8 +1,11 @@
 package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.rest.dto.DeckDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.FlashcardDTO;
 import ch.uzh.ifi.hase.soprafs24.entity.Deck;
+import ch.uzh.ifi.hase.soprafs24.entity.Flashcard;
 import ch.uzh.ifi.hase.soprafs24.rest.mapper.DeckMapper;
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.FlashcardMapper;
 import ch.uzh.ifi.hase.soprafs24.service.FlashcardService;
 
 
@@ -74,6 +77,25 @@ public class FlashcardController {
     @ResponseBody
     public void deleteDeck(@PathVariable Long id) {
         flashcardService.deleteDeck(id);
+    }
+
+    @GetMapping("/decks/{deckId}/flashcards")
+    @ResponseStatus(HttpStatus.OK)
+    @ResponseBody
+    public List<FlashcardDTO> getAllFlashcardsForDeck(@PathVariable Long deckId) {
+        List<Flashcard> flashcards = flashcardService.getAllFlashcardsForDeck(deckId);
+        return FlashcardMapper.toDTOList(flashcards);
+    }
+
+    @GetMapping("/flashcards/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    @ResponseBody
+    public FlashcardDTO getFlashcardById(@PathVariable Long id) {
+        // Fetch user from the service layer
+        Flashcard flashcard = flashcardService.getCardById(id);
+
+        // Convert entity to DTO and return
+        return FlashcardMapper.toDTO(flashcard);
     }
 
 
