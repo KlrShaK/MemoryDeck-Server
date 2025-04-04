@@ -98,6 +98,21 @@ public class FlashcardController {
         return FlashcardMapper.toDTO(flashcard);
     }
 
+    @PutMapping("/flashcards/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @ResponseBody
+    public void updateFlashcardInfo(@PathVariable Long id, @RequestBody Flashcard updatedFlashcard) {
+        updatedFlashcard.setId(id); // Ensure the ID is correctly set
+        flashcardService.updateFlashcard(updatedFlashcard);
+    }
+
+    @DeleteMapping("/decks/{deckId}/flashcards/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    @ResponseBody
+    public void deleteFlashcard(@PathVariable Long id,@PathVariable Long deckId) {
+        flashcardService.deleteFlashcard(id);
+    }
+
 
 
 
