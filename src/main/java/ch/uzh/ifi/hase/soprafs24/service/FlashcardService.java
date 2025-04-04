@@ -153,6 +153,14 @@ public class FlashcardService {
 
     // TODO removeImageFromFlashcard, createFlashcard
 
+    public Flashcard createFlashcard(Long deckId, Flashcard flashcard) {
+        Deck deck = getDeckById(deckId);
+        flashcard.setDeck(deck);
+        flashcard.setFlashcardCategory(deck.getDeckCategory());
+        checkIfAnswerIsDuplicated(flashcard);
+        return flashcardRepository.save(flashcard); 
+    }
+
     private void checkIfAnswerIsDuplicated(Flashcard flashcardToBeChecked) {
         String correctAnswer = flashcardToBeChecked.getAnswer();
         String[] wrongAnswers = flashcardToBeChecked.getWrongAnswers();

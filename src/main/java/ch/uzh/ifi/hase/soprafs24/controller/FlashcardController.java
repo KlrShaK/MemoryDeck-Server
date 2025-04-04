@@ -113,6 +113,15 @@ public class FlashcardController {
         flashcardService.deleteFlashcard(id);
     }
 
+    @PostMapping("/decks/{deckId}/flashcards/addFlashcard")
+    @ResponseStatus(HttpStatus.CREATED)
+    @ResponseBody
+    public FlashcardDTO createFlashcard(@PathVariable Long deckId,@Valid @RequestBody FlashcardDTO flashcardDTO) {
+        Flashcard flashcard = FlashcardMapper.toEntity(flashcardDTO);
+        Flashcard createdFlashcard = flashcardService.createFlashcard(deckId, flashcard);
+        return FlashcardMapper.toDTO(createdFlashcard);
+    }
+
 
 
 
