@@ -3,6 +3,7 @@ package ch.uzh.ifi.hase.soprafs24.rest.dto;
 
 import java.time.LocalDate;
 
+import ch.uzh.ifi.hase.soprafs24.constant.FlashcardCategory;
 import ch.uzh.ifi.hase.soprafs24.entity.Deck;
 
 public class FlashcardDTO {
@@ -18,6 +19,8 @@ public class FlashcardDTO {
     private LocalDate date;
 
     private String answer;
+
+    private FlashcardCategory flashcardCategory;
 
     private String[] wrongAnswers;
 
@@ -61,6 +64,14 @@ public class FlashcardDTO {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public FlashcardCategory getFlashcardCategory() {
+        return flashcardCategory;
+    }
+
+    public void setFlashcardCategory(FlashcardCategory flashcardCategory) {
+        this.flashcardCategory = flashcardCategory;
     }
 
     public String getAnswer() {

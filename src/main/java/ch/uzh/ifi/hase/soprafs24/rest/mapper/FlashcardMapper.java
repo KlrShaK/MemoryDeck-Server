@@ -16,6 +16,7 @@ public class FlashcardMapper {
         dto.setImageUrl(flashcard.getImageUrl());
         dto.setDate(flashcard.getDate());
         dto.setDescription(flashcard.getDescription());
+        dto.setFlashcardCategory(flashcard.getFlashcardCategory());
         dto.setAnswer(flashcard.getAnswer());
         dto.setWrongAnswers(flashcard.getWrongAnswers());
         dto.setDeck(flashcard.getDeck());
@@ -32,6 +33,7 @@ public class FlashcardMapper {
         flashcard.setImageUrl(dto.getImageUrl());
         flashcard.setDate(dto.getDate());
         flashcard.setDescription(dto.getDescription());
+        flashcard.setFlashcardCategory(dto.getFlashcardCategory());
         flashcard.setAnswer(dto.getAnswer());
         flashcard.setWrongAnswers(dto.getWrongAnswers());
         flashcard.setDeck(dto.getDeck());

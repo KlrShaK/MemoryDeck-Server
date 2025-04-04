@@ -5,6 +5,7 @@ import java.util.List;
 
 import ch.uzh.ifi.hase.soprafs24.constant.FlashcardCategory;
 import ch.uzh.ifi.hase.soprafs24.entity.Flashcard;
+import ch.uzh.ifi.hase.soprafs24.entity.Quiz;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 
 public class DeckDTO {
@@ -17,10 +18,25 @@ public class DeckDTO {
 
     private FlashcardCategory deckCategory;
 
-    private List<Flashcard> flashcards; 
+    private List<Flashcard> flashcards;
+
+    private Quiz quiz;
 
     private Boolean isPublic;
 
+    private Boolean isAiGenerated;
+
+    private String aiPrompt;
+
+    private Integer numberOfAICards;
+
+    // Getters and setters for numberOfCards
+
+    public Boolean getIsAiGenerated() { return isAiGenerated; }
+    public void setIsAiGenerated(Boolean isAiGenerated) { this.isAiGenerated = isAiGenerated; }
+
+    public String getAiPrompt() { return aiPrompt; }
+    public void setAiPrompt(String aiPrompt) { this.aiPrompt = aiPrompt; }
 
     public Long getId() {
         return id;
@@ -36,6 +52,14 @@ public class DeckDTO {
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public Quiz getQuiz() {
+        return quiz;
+    }
+
+    public void setQuiz(Quiz quiz) {
+        this.quiz = quiz;
     }
 
     public FlashcardCategory getDeckCategory() {
@@ -56,8 +80,8 @@ public class DeckDTO {
 
     public List<Flashcard> getFlashcards() {
         return flashcards;
-      }
-    
+    }
+
     public void setFlashcards(List<Flashcard> flashcards) {
         this.flashcards = flashcards;
     }
@@ -70,5 +94,12 @@ public class DeckDTO {
         this.title = title;
     }
 
+    public Integer getNumberofAICards() {
+        return numberOfAICards;
+    }
+
+    public void setNumberofAICards(Integer numberOfAICards) {
+        this.numberOfAICards = numberOfAICards;
+    }
 
 }
