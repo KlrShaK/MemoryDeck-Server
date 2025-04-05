@@ -151,6 +151,68 @@ public class FlashcardService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Flashcard with ID " + cardId + " not found"));
     }
 
-    // TODO updateFlashcard,deleteFlashcard,removeImageFromFlashcard, createFlashcard, checkIfAnswerIsDuplicated
+    // TODO removeImageFromFlashcard, createFlashcard
+
+    public Flashcard createFlashcard(Long deckId, Flashcard flashcard) {
+        Deck deck = getDeckById(deckId);
+        flashcard.setDeck(deck);
+        flashcard.setFlashcardCategory(deck.getDeckCategory());
+        checkIfAnswerIsDuplicated(flashcard);
+        return flashcardRepository.save(flashcard); 
+    }
+
+    private void checkIfAnswerIsDuplicated(Flashcard flashcardToBeChecked) {
+        String correctAnswer = flashcardToBeChecked.getAnswer();
+        String[] wrongAnswers = flashcardToBeChecked.getWrongAnswers();
+    
+        for (String wrongAnswer : wrongAnswers) {
+            if (correctAnswer.equals(wrongAnswer)) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "The correct answer must not appear in the wrong answers list!"
+                );
+            }
+        }
+    }
+    
+    public void updateFlashcard(Flashcard updatedFlashcard) {
+        Optional<Flashcard> existingFlashcardOptional = flashcardRepository.findById(updatedFlashcard.getId());
+
+        if (existingFlashcardOptional.isPresent()) {
+            Flashcard existingFlashcard = existingFlashcardOptional.get();
+
+            // Update fields
+            if (updatedFlashcard.getDate() != null) {
+                existingFlashcard.setDate(updatedFlashcard.getDate());
+            }
+            if (updatedFlashcard.getDescription() != null) {
+                existingFlashcard.setDescription(updatedFlashcard.getDescription());
+            }
+            // flashcard category and isPublic is dependent on the deck so it cannot be updated
+            if (updatedFlashcard.getAnswer() != null) {
+                existingFlashcard.setAnswer(updatedFlashcard.getAnswer());
+            }
+            if (updatedFlashcard.getWrongAnswers() != null) {
+                existingFlashcard.setWrongAnswers(updatedFlashcard.getWrongAnswers());
+            }
+            if (updatedFlashcard.getImageUrl() != null) {
+                existingFlashcard.setImageUrl(updatedFlashcard.getImageUrl());
+            }
+
+            checkIfAnswerIsDuplicated(existingFlashcard);
+
+            flashcardRepository.save(existingFlashcard);
+        } else {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Flashcard not found");
+        }
+    }
+
+    public void deleteFlashcard(Long flashcardId) {
+        Flashcard flashcard = flashcardRepository.findById(flashcardId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Flashcard not found"));
+
+        flashcardRepository.delete(flashcard);  // Use `delete()` instead of `deleteById()` for consistency with your test
+    }
+
 
 }
