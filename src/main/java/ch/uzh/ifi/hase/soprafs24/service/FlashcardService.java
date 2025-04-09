@@ -151,8 +151,6 @@ public class FlashcardService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Flashcard with ID " + cardId + " not found"));
     }
 
-    // TODO removeImageFromFlashcard, createFlashcard
-
     public Flashcard createFlashcard(Long deckId, Flashcard flashcard) {
         Deck deck = getDeckById(deckId);
         flashcard.setDeck(deck);
@@ -213,6 +211,14 @@ public class FlashcardService {
 
         flashcardRepository.delete(flashcard);  // Use `delete()` instead of `deleteById()` for consistency with your test
     }
+
+    public void removeImageFromFlashcard(String imageUrl) {
+        Flashcard flashcard = flashcardRepository.findByImageUrl(imageUrl);
+        if (flashcard != null) {
+            flashcard.setImageUrl(null);  // Remove the image URL from the flashcard
+            flashcardRepository.save(flashcard);  // Save the updated flashcard
+        }
+    } 
 
 
 }
