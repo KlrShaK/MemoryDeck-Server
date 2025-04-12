@@ -146,7 +146,6 @@ public class FlashcardController {
             return ResponseEntity.ok(fileUrl);
 
         } catch (IOException e) {
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload image");
         }
     }
@@ -168,7 +167,6 @@ public class FlashcardController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Image not found or already deleted");
             }
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to delete image");
         }
     }

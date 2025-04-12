@@ -48,7 +48,6 @@ public class GoogleCloudStorageService {
                 return false; // File not found
             }
         } catch (Exception e) {
-            e.printStackTrace();
             return false;
         }
     }
