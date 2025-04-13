@@ -37,6 +37,7 @@ public class Flashcard implements Serializable {
     @Column(nullable = false)
     private String description;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = true)
     private FlashcardCategory flashcardCategory;
 
