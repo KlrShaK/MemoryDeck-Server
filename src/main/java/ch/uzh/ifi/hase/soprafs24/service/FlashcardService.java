@@ -156,15 +156,6 @@ public class FlashcardService {
         flashcard.setDeck(deck);
         flashcard.setFlashcardCategory(deck.getDeckCategory());
 
-        // 🔍 LOG HERE
-        System.out.println("📌 Creating flashcard:");
-        System.out.println("Deck ID: " + (deck != null ? deck.getId() : "null"));
-        System.out.println("Deck from Flashcard: " + (flashcard.getDeck() != null ? flashcard.getDeck().getId() : "null"));
-        System.out.println("Answer: " + flashcard.getAnswer());
-        System.out.println("Category: " + flashcard.getFlashcardCategory());
-        System.out.println("Date: " + flashcard.getDate());
-        System.out.println("WrongAnswers: " + (flashcard.getWrongAnswers() != null ? List.of(flashcard.getWrongAnswers()) : "null"));
-
         checkIfAnswerIsDuplicated(flashcard);
         return flashcardRepository.save(flashcard);
     }
