@@ -45,7 +45,42 @@ public class QuizController {
 
         return quizMapper.toDTO(quiz);
     }
-    
+
+    @GetMapping("/invitation/{invitationId}") 
+    @ResponseStatus(HttpStatus.OK)
+    public InvitationDTO getQuizInvitation(@PathVariable Long invitationId) {
+
+        Invitation invitation = quizService.getInvitationById(invitationId);
+
+        return invitationMapper.toDTO(invitation);
+    }
+
+    @GetMapping("/invitation/senders")
+    @ResponseStatus(HttpStatus.OK)
+    public List<InvitationDTO> getQuizInvitationsBySender(@RequestParam Long fromUserId) {
+
+        List<Invitation> invitations = quizService.getInvitationByFromUserId(fromUserId);
+
+        return invitationMapper.toDTOList(invitations);
+    }
+
+    @GetMapping("/invitation/receivers")
+    @ResponseStatus(HttpStatus.OK)
+    public List<InvitationDTO> getQuizInvitationsByReceiver(@RequestParam Long toUserId) {
+
+        List<Invitation> invitations = quizService.getInvitationByToUserId(toUserId);
+
+        return invitationMapper.toDTOList(invitations);
+    }
+
+    @DeleteMapping("/invitation/delete/{invitationId}")
+    @ResponseStatus(HttpStatus.OK)
+    public void deleteInvitationById(@PathVariable Long invitationId) {
+
+        quizService.deleteInvitationById(invitationId);
+
+    }
+
 
 
 }

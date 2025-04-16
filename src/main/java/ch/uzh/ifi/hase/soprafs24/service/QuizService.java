@@ -55,6 +55,17 @@ public class QuizService {
         this.deckRepository = deckRepository;
     }
 
+
+    public Quiz getQuizById(Long quizId) {
+        Optional<Quiz> existingQuizOpt = quizRepository.findById(quizId);
+        if (existingQuizOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Quiz not found");
+        }
+        Quiz existingQuiz = existingQuizOpt.get();
+
+        return existingQuiz;
+    }
+
     public void checkUserStatusForInvitation(User user) {
 
         if (user.getStatus()==UserStatus.OFFLINE || user.getStatus()==UserStatus.PLAYING) {
@@ -70,6 +81,34 @@ public class QuizService {
         Invitation existingInvitation = existingInvitationOpt.get();
 
         return existingInvitation;
+    }
+
+    public List<Invitation> getInvitationByFromUserId(Long fromUserId) {
+        User fromUser = userService.getUserById(fromUserId);
+
+        List<Invitation> invitations = invitationRepository.findByFromUser(fromUser);
+
+        return invitations;
+    }
+
+    public List<Invitation> getInvitationByToUserId(Long toUserId) {
+        User toUser = userService.getUserById(toUserId);
+
+        List<Invitation> invitations = invitationRepository.findByToUser(toUser);
+
+        return invitations;
+    }
+
+    public void deleteInvitationById(Long invitationId) {
+
+        Optional<Invitation> existingInvitationOpt = invitationRepository.findById(invitationId);
+        if (existingInvitationOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Invitation not found");
+        }
+
+        Invitation existingInvitation = existingInvitationOpt.get();
+
+        invitationRepository.delete(existingInvitation);
     }
 
 
