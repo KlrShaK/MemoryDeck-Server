@@ -16,10 +16,7 @@ import java.util.List;
 
 import javax.validation.Valid;
 
-/**
- * Quiz Controller
- * Handles quiz invitations between users.
- */
+
 @RestController
 @RequestMapping("/quiz")
 public class QuizController {
