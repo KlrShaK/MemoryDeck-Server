@@ -81,6 +81,32 @@ public class QuizController {
 
     }
 
+    @GetMapping("/response/confirmation")
+    @ResponseStatus(HttpStatus.OK)
+    public void confirmedQuizInvitation(@RequestParam Long invitationId) {
+
+        quizService.confirmedInvitation(invitationId);
+
+    }
+
+    @DeleteMapping("/response/rejection")
+    @ResponseStatus(HttpStatus.OK)
+    public void rejectedQuizInvitation(@RequestParam Long invitationId) {
+
+        quizService.rejectedInvitation(invitationId);
+
+    }
+
+    @GetMapping("/invitation/accepted")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<InvitationDTO> getAcceptedQuizInvitationsForSender(@RequestParam Long fromUserId) {
+        Invitation invitation = quizService.findInvitationByFromUserIdAndIsAcceptedTrue(fromUserId);
+        if (invitation == null) {
+            return ResponseEntity.ok().body(null); // 200 OK with empty body
+        }
+        return ResponseEntity.ok(invitationMapper.toDTO(invitation));
+    }
+
 
 
 }

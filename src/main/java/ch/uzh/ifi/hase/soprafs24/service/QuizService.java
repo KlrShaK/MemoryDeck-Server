@@ -152,4 +152,75 @@ public class QuizService {
         return quiz;
     }
 
+    public void confirmedInvitation(Long invitationId){
+
+        Invitation invitation = getInvitationById(invitationId);
+
+        Quiz quiz = invitation.getQuiz();
+        User sender = invitation.getFromUser();
+        User receiver = invitation.getToUser();
+
+        quiz.setQuizStatus(QuizStatus.IN_PROGRESS);
+        quiz.setStartTime(new Date());
+        sender.setStatus(UserStatus.PLAYING);
+        receiver.setStatus(UserStatus.PLAYING);
+        invitation.setIsAccepted(true);
+        invitation.setIsAcceptedDate(new Date());
+
+        userRepository.save(sender);
+        userRepository.save(receiver);
+        quizRepository.save(quiz);
+        invitationRepository.save(invitation);
+
+    }
+
+    public void rejectedInvitation(Long invitationId){
+
+        Invitation invitation = getInvitationById(invitationId);
+
+        Quiz quiz = invitation.getQuiz();
+
+        quizRepository.delete(quiz);
+        invitationRepository.delete(invitation);
+
+    }
+
+    public Invitation findInvitationByFromUserIdAndIsAcceptedTrue(Long fromUserId) {
+        // Fetch all invitations sent by this user
+        List<Invitation> invitations = getInvitationByFromUserId(fromUserId);
+
+        // Filter to include only accepted invitations
+        List<Invitation> acceptedInvitations = invitations.stream()
+            .filter(Invitation::getIsAccepted)
+            .sorted(Comparator.comparing(Invitation::getIsAcceptedDate)) // sort by accepted date ascending
+            .collect(Collectors.toList());
+
+        // If no accepted invitations found, return null
+        if (acceptedInvitations.isEmpty()) {
+            return null;
+        }
+
+        // The first one is the earliest accepted invitation
+        Invitation earliestAccepted = acceptedInvitations.get(0);
+
+        // All others are late accepted invitations – considered as rejected
+        List<Invitation> lateAcceptedInvitations = acceptedInvitations.subList(1, acceptedInvitations.size());
+
+        for (Invitation lateInvitation : lateAcceptedInvitations) {
+            // Delete the corresponding quiz if it exists
+            if (lateInvitation.getQuiz() != null) {
+                quizRepository.delete(lateInvitation.getQuiz());
+            }
+            User toUser = lateInvitation.getToUser();
+            toUser.setStatus(UserStatus.ONLINE);
+            userRepository.save(toUser);
+
+            // Delete the late invitation
+            invitationRepository.delete(lateInvitation);
+        }
+
+        // Return the only accepted and kept invitation
+        return earliestAccepted;
+    }
+
 }
