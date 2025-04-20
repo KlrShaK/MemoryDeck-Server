@@ -4,6 +4,8 @@ import ch.uzh.ifi.hase.soprafs24.entity.Quiz;
 import ch.uzh.ifi.hase.soprafs24.entity.Score;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.ScoreDTO;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -12,6 +14,13 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ScoreMapperTest {
+
+    private ScoreMapper scoreMapper;
+
+    @BeforeEach
+    public void setup() {
+        scoreMapper = new ScoreMapper();
+    }
 
     @Test
     void testToDTO() {
@@ -31,7 +40,7 @@ class ScoreMapperTest {
         score.setTotalQuestions(10);
 
         // Act
-        ScoreDTO dto = ScoreMapper.toDTO(score);
+        ScoreDTO dto = scoreMapper.toDTO(score);
 
         // Assert
         assertNotNull(dto);
@@ -58,7 +67,7 @@ class ScoreMapperTest {
         List<Score> scores = Arrays.asList(score1, score2);
 
         // Act
-        List<ScoreDTO> dtoList = ScoreMapper.toDTOList(scores);
+        List<ScoreDTO> dtoList = scoreMapper.toDTOList(scores);
 
         // Assert
         assertNotNull(dtoList);
@@ -84,7 +93,7 @@ class ScoreMapperTest {
         dto.setTotalQuestions(12);
 
         // Act
-        Score entity = ScoreMapper.toEntity(dto);
+        Score entity = scoreMapper.toEntity(dto);
 
         // Assert
         assertNotNull(entity);

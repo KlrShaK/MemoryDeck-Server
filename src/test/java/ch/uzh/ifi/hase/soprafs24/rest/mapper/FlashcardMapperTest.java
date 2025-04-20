@@ -4,6 +4,8 @@ import ch.uzh.ifi.hase.soprafs24.entity.Deck;
 import ch.uzh.ifi.hase.soprafs24.entity.Flashcard;
 import ch.uzh.ifi.hase.soprafs24.constant.FlashcardCategory;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.FlashcardDTO;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -13,6 +15,13 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class FlashcardMapperTest {
+
+    private FlashcardMapper flashcardMapper;
+
+    @BeforeEach
+    public void setup() {
+        flashcardMapper = new FlashcardMapper();
+    }
 
     @Test
     void testToDTO_mapsAllFieldsCorrectly() {
@@ -31,7 +40,7 @@ class FlashcardMapperTest {
         flashcard.setDeck(deck);
 
         // Act
-        FlashcardDTO dto = FlashcardMapper.toDTO(flashcard);
+        FlashcardDTO dto = flashcardMapper.toDTO(flashcard);
 
         // Assert
         assertEquals(1L, dto.getId());
@@ -61,7 +70,7 @@ class FlashcardMapperTest {
         dto.setDeck(deck);
 
         // Act
-        Flashcard flashcard = FlashcardMapper.toEntity(dto);
+        Flashcard flashcard = flashcardMapper.toEntity(dto);
 
         // Assert
         assertEquals(2L, flashcard.getId());
@@ -88,7 +97,7 @@ class FlashcardMapperTest {
         List<Flashcard> flashcards = Arrays.asList(flashcard1, flashcard2);
 
         // Act
-        List<FlashcardDTO> dtoList = FlashcardMapper.toDTOList(flashcards);
+        List<FlashcardDTO> dtoList = flashcardMapper.toDTOList(flashcards);
 
         // Assert
         assertNotNull(dtoList);

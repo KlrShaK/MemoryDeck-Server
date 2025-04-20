@@ -6,9 +6,12 @@ import ch.uzh.ifi.hase.soprafs24.entity.Deck;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class DeckMapper {
 
-    public static DeckDTO toDTO(Deck deck) {
+    public DeckDTO toDTO(Deck deck) {
         DeckDTO dto = new DeckDTO();
         dto.setId(deck.getId());
         dto.setTitle(deck.getTitle());
@@ -24,11 +27,11 @@ public class DeckMapper {
         return dto;
     }
 
-    public static List<DeckDTO> toDTOList(List<Deck> decks) {
-        return decks.stream().map(DeckMapper::toDTO).collect(Collectors.toList());
+    public List<DeckDTO> toDTOList(List<Deck> decks) {
+        return decks.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
-    public static Deck toEntity(DeckDTO dto) {
+    public Deck toEntity(DeckDTO dto) {
         Deck deck = new Deck();
         deck.setId(dto.getId());
         deck.setTitle(dto.getTitle());

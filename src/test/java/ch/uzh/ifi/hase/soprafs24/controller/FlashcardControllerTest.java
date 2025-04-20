@@ -14,8 +14,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.storage.Blob;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,18 +49,8 @@ public class FlashcardControllerTest {
     @MockBean
     private GoogleCloudStorageService googleCloudStorageService;
 
-    @BeforeAll
-    static void setupMocks() {
-        // Mock static methods of DeckMapper
-        Mockito.mockStatic(DeckMapper.class);
-        Mockito.mockStatic(FlashcardMapper.class);
-    }
-
-    @AfterAll
-    static void cleanupMocks() {
-        // Close the static mock to prevent memory leaks
-        Mockito.reset();
-    }
+    @MockBean
+    private FlashcardMapper flashcardMapper;
 
     @Test
     void testGetDecksForUser() throws Exception {
@@ -88,7 +76,7 @@ public class FlashcardControllerTest {
 
         // 3. Mock service + mapper
         Mockito.when(flashcardService.getDecks(1L)).thenReturn(List.of(deck));
-        Mockito.when(DeckMapper.toDTOList(List.of(deck)))
+        Mockito.when(deckMapper.toDTOList(List.of(deck)))
                 .thenReturn(List.of(deckDTO));
 
         // 4. Perform GET request
@@ -126,7 +114,7 @@ public class FlashcardControllerTest {
 
         // 3. Mock service + mapper
         Mockito.when(flashcardService.getDeckById(1L)).thenReturn(deck);
-        Mockito.when(DeckMapper.toDTO(deck)).thenReturn(deckDTO);
+        Mockito.when(deckMapper.toDTO(deck)).thenReturn(deckDTO);
 
             // 4. Perform GET request
             mockMvc.perform(get("/decks/{id}", 1L))
@@ -204,9 +192,9 @@ public class FlashcardControllerTest {
         expectedDeckDTO.setFlashcards(deck.getFlashcards());
 
         // 4. Mock service and mapper methods
-        Mockito.when(DeckMapper.toEntity(deckDTO)).thenReturn(deck);
+        Mockito.when(deckMapper.toEntity(deckDTO)).thenReturn(deck);
         Mockito.when(flashcardService.createDeck(1L, deck, 5)).thenReturn(deck);
-        Mockito.when(DeckMapper.toDTO(deck)).thenReturn(expectedDeckDTO);
+        Mockito.when(deckMapper.toDTO(deck)).thenReturn(expectedDeckDTO);
 
         // 5. Perform POST request
         mockMvc.perform(post("/decks/addDeck")
@@ -245,7 +233,7 @@ public class FlashcardControllerTest {
 
         // 3. Mock service and mapper methods
         // Mock DeckMapper.toEntity to return the Deck entity
-        Mockito.when(DeckMapper.toEntity(deckDTO)).thenReturn(deck);  // Mock DeckMapper
+        Mockito.when(deckMapper.toEntity(deckDTO)).thenReturn(deck);  // Mock DeckMapper
         
         // Mock FlashcardService to do nothing on updateDeck call
         Mockito.doNothing().when(flashcardService).updateDeck(1L, deck);  // Mock the update service method
@@ -289,7 +277,7 @@ public class FlashcardControllerTest {
 
         // 3. Mock service + mapper
         Mockito.when(flashcardService.getCardById(1L)).thenReturn(flashcard);
-        Mockito.when(FlashcardMapper.toDTO(flashcard)).thenReturn(flashcardDTO);
+        Mockito.when(flashcardMapper.toDTO(flashcard)).thenReturn(flashcardDTO);
 
             // 4. Perform GET request
             mockMvc.perform(get("/flashcards/{id}", 1L))
@@ -321,7 +309,7 @@ public class FlashcardControllerTest {
         flashcardDTO.setFlashcardCategory(FlashcardCategory.MATH);
 
         // 3. Mock service and mapper methods
-        Mockito.when(FlashcardMapper.toDTO(flashcard)).thenReturn(flashcardDTO);
+        Mockito.when(flashcardMapper.toDTO(flashcard)).thenReturn(flashcardDTO);
 
         Mockito.doNothing().when(flashcardService).updateFlashcard(1L,flashcard);
 
@@ -366,9 +354,9 @@ public class FlashcardControllerTest {
         createdFlashcardDTO.setDeck(deck);  // Set the deck association
 
         // 4. Mock service and mapper methods
-        Mockito.when(FlashcardMapper.toEntity(flashcardDTO)).thenReturn(flashcard);  // Mock toEntity
+        Mockito.when(flashcardMapper.toEntity(flashcardDTO)).thenReturn(flashcard);  // Mock toEntity
         Mockito.when(flashcardService.createFlashcard(1L, flashcard)).thenReturn(flashcard);  // Mock createFlashcard
-        Mockito.when(FlashcardMapper.toDTO(flashcard)).thenReturn(createdFlashcardDTO);  // Mock toDTO
+        Mockito.when(flashcardMapper.toDTO(flashcard)).thenReturn(createdFlashcardDTO);  // Mock toDTO
 
         // 5. Perform POST request to create the flashcard
         mockMvc.perform(post("/decks/{deckId}/flashcards/addFlashcard", 1L)

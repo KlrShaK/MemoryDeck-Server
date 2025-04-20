@@ -4,6 +4,7 @@ import ch.uzh.ifi.hase.soprafs24.constant.FlashcardCategory;
 import ch.uzh.ifi.hase.soprafs24.entity.*;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.DeckDTO;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -12,6 +13,13 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DeckMapperTest {
+
+    private DeckMapper deckMapper;
+
+    @BeforeEach
+    public void setup() {
+        deckMapper = new DeckMapper();
+    }
 
     @Test
     void testToDTO_mapsAllFieldsCorrectly() {
@@ -42,7 +50,7 @@ class DeckMapperTest {
         deck.setInvitation(invitation);
 
         // Act
-        DeckDTO dto = DeckMapper.toDTO(deck);
+        DeckDTO dto = deckMapper.toDTO(deck);
 
         // Assert
         assertEquals(deck.getId(), dto.getId());
@@ -82,7 +90,7 @@ class DeckMapperTest {
         dto.setQuiz(quiz);
 
         // Act
-        Deck deck = DeckMapper.toEntity(dto);
+        Deck deck = deckMapper.toEntity(dto);
 
         // Assert
         assertEquals(dto.getId(), deck.getId());
@@ -111,7 +119,7 @@ class DeckMapperTest {
         List<Deck> deckList = Arrays.asList(deck1, deck2);
 
         // Act
-        List<DeckDTO> dtoList = DeckMapper.toDTOList(deckList);
+        List<DeckDTO> dtoList = deckMapper.toDTOList(deckList);
 
         // Assert
         assertEquals(2, dtoList.size());

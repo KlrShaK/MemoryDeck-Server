@@ -26,10 +26,15 @@ public class FlashcardController {
 
     private final FlashcardService flashcardService;
     private final GoogleCloudStorageService googleCloudStorageService;
+    private FlashcardMapper flashcardMapper;
+    private DeckMapper deckMapper;
 
-    public FlashcardController(FlashcardService flashcardService, GoogleCloudStorageService googleCloudStorageService) {
+    public FlashcardController(FlashcardService flashcardService, GoogleCloudStorageService googleCloudStorageService,
+                                FlashcardMapper flashcardMapper, DeckMapper deckMapper) {
         this.flashcardService = flashcardService;
         this.googleCloudStorageService = googleCloudStorageService;
+        this.flashcardMapper= flashcardMapper;
+        this.deckMapper= deckMapper;
     }
 
     @GetMapping("/decks")
@@ -37,7 +42,7 @@ public class FlashcardController {
     @ResponseBody
     public List<DeckDTO> getDecksForUser(@RequestParam Long userId) {
         List<Deck> decks = flashcardService.getDecks(userId);
-        return DeckMapper.toDTOList(decks);
+        return deckMapper.toDTOList(decks);
     }
 
     @GetMapping("/decks/{id}")
@@ -48,7 +53,7 @@ public class FlashcardController {
         Deck deck = flashcardService.getDeckById(id);
 
         // Convert entity to DTO and return
-        return DeckMapper.toDTO(deck);
+        return deckMapper.toDTO(deck);
     }
 
     @GetMapping("/decks/public")
@@ -56,28 +61,28 @@ public class FlashcardController {
     @ResponseBody
     public List<DeckDTO> getPublicDecks() {
         List<Deck> publicDecks = flashcardService.getPublicDecks();
-        return DeckMapper.toDTOList(publicDecks);
+        return deckMapper.toDTOList(publicDecks);
     }
 
     @PostMapping("/decks/addDeck")
     @ResponseStatus(HttpStatus.CREATED)
     @ResponseBody
     public DeckDTO createDeck(@RequestParam Long userId, @Valid @RequestBody DeckDTO deckDTO) {
-        Deck deck = DeckMapper.toEntity(deckDTO);
+        Deck deck = deckMapper.toEntity(deckDTO);
         // If numberOfCards is not provided, default to 5 when AI generation is enabled
         System.out.println("NUMBER OF AI CARDS: " + deckDTO.getNumberOfAICards());
         int numberOfCards = (deckDTO.getIsAiGenerated() != null && deckDTO.getIsAiGenerated() && deckDTO.getNumberOfAICards() != null)
                 ? deckDTO.getNumberOfAICards()
                 : ((deckDTO.getIsAiGenerated() != null && deckDTO.getIsAiGenerated()) ? 5 : 0);
         Deck createdDeck = flashcardService.createDeck(userId, deck, numberOfCards);
-        return DeckMapper.toDTO(createdDeck);
+        return deckMapper.toDTO(createdDeck);
     }
 
     @PutMapping("/decks/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @ResponseBody
     public void updateDeck(@PathVariable Long id, @RequestBody DeckDTO deckDTO) {
-        flashcardService.updateDeck(id, DeckMapper.toEntity(deckDTO));
+        flashcardService.updateDeck(id, deckMapper.toEntity(deckDTO));
     }
 
     @DeleteMapping("/decks/{id}")
@@ -92,7 +97,7 @@ public class FlashcardController {
     @ResponseBody
     public List<FlashcardDTO> getAllFlashcardsForDeck(@PathVariable Long deckId) {
         List<Flashcard> flashcards = flashcardService.getAllFlashcardsForDeck(deckId);
-        return FlashcardMapper.toDTOList(flashcards);
+        return flashcardMapper.toDTOList(flashcards);
     }
 
     @GetMapping("/flashcards/{id}")
@@ -103,14 +108,14 @@ public class FlashcardController {
         Flashcard flashcard = flashcardService.getCardById(id);
 
         // Convert entity to DTO and return
-        return FlashcardMapper.toDTO(flashcard);
+        return flashcardMapper.toDTO(flashcard);
     }
 
     @PutMapping("/flashcards/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @ResponseBody
     public void updateFlashcardInfo(@PathVariable Long id, @RequestBody FlashcardDTO updatedFlashcard) {
-        flashcardService.updateFlashcard(id, FlashcardMapper.toEntity(updatedFlashcard));
+        flashcardService.updateFlashcard(id, flashcardMapper.toEntity(updatedFlashcard));
     }
 
     @DeleteMapping("/decks/{deckId}/flashcards/{id}")
@@ -124,9 +129,9 @@ public class FlashcardController {
     @ResponseStatus(HttpStatus.CREATED)
     @ResponseBody
     public FlashcardDTO createFlashcard(@PathVariable Long deckId,@Valid @RequestBody FlashcardDTO flashcardDTO) {
-        Flashcard flashcard = FlashcardMapper.toEntity(flashcardDTO);
+        Flashcard flashcard = flashcardMapper.toEntity(flashcardDTO);
         Flashcard createdFlashcard = flashcardService.createFlashcard(deckId, flashcard);
-        return FlashcardMapper.toDTO(createdFlashcard);
+        return flashcardMapper.toDTO(createdFlashcard);
     }
 
     @PostMapping("/flashcards/upload-image")
