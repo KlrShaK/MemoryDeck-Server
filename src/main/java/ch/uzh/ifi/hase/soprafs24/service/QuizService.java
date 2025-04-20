@@ -66,13 +66,6 @@ public class QuizService {
         return existingQuiz;
     }
 
-    public void checkUserStatusForInvitation(User user) {
-
-        if (user.getStatus()==UserStatus.OFFLINE || user.getStatus()==UserStatus.PLAYING) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User cannot be OFFLINE or PLAYING.");
-        }
-    }
-
     public Invitation getInvitationById(Long invitationId) {
         Optional<Invitation> existingInvitationOpt = invitationRepository.findById(invitationId);
         if (existingInvitationOpt.isEmpty()) {
@@ -109,8 +102,15 @@ public class QuizService {
         Invitation existingInvitation = existingInvitationOpt.get();
 
         invitationRepository.delete(existingInvitation);
+        invitationRepository.flush();
     }
 
+    public void checkUserStatusForInvitation(User user) {
+
+        if (user.getStatus()==UserStatus.OFFLINE || user.getStatus()==UserStatus.PLAYING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User cannot be OFFLINE or PLAYING.");
+        }
+    }
 
     public Invitation createInvitation(InvitationDTO invitationDTO) {
         User fromUser = userService.getUserById(invitationDTO.getFromUserId());
@@ -133,6 +133,7 @@ public class QuizService {
         invitation.setDecks(new ArrayList<>(managedDecks));
 
         invitationRepository.save(invitation);
+        invitationRepository.flush();
 
         return invitation;
 
@@ -147,7 +148,9 @@ public class QuizService {
         invitation.setQuiz(quiz);
 
         invitationRepository.save(invitation);
+        invitationRepository.flush();
         quizRepository.save(quiz);
+        quizRepository.flush();
 
         return quiz;
     }
@@ -169,8 +172,11 @@ public class QuizService {
 
         userRepository.save(sender);
         userRepository.save(receiver);
+        userRepository.flush();
         quizRepository.save(quiz);
+        quizRepository.flush();
         invitationRepository.save(invitation);
+        invitationRepository.flush();
 
     }
 
@@ -181,7 +187,9 @@ public class QuizService {
         Quiz quiz = invitation.getQuiz();
 
         quizRepository.delete(quiz);
+        quizRepository.flush();
         invitationRepository.delete(invitation);
+        invitationRepository.flush();
 
     }
 
@@ -210,13 +218,16 @@ public class QuizService {
             // Delete the corresponding quiz if it exists
             if (lateInvitation.getQuiz() != null) {
                 quizRepository.delete(lateInvitation.getQuiz());
+                quizRepository.flush();
             }
             User toUser = lateInvitation.getToUser();
             toUser.setStatus(UserStatus.ONLINE);
             userRepository.save(toUser);
+            userRepository.flush();
 
             // Delete the late invitation
             invitationRepository.delete(lateInvitation);
+            invitationRepository.flush();
         }
 
         // Return the only accepted and kept invitation
