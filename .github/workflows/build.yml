@@ -39,6 +39,7 @@ jobs:
       - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-credentials.json
         run: ./gradlew build sonar --info
       
