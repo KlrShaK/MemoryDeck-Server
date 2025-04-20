@@ -91,6 +91,7 @@ class FlashcardMapperTest {
         List<FlashcardDTO> dtoList = FlashcardMapper.toDTOList(flashcards);
 
         // Assert
+        assertNotNull(dtoList);
         assertEquals(2, dtoList.size());
         assertEquals("Card 1", dtoList.get(0).getDescription());
         assertEquals("Card 2", dtoList.get(1).getDescription());
