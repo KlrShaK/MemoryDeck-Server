@@ -16,11 +16,6 @@ jobs:
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
-      
-      - name: Set up fake Google credentials for testing
-        run: |
-          echo '{}' > fake-key.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$PWD/fake-key.json" >> $GITHUB_ENV
 
       - name: Install Java 17
         uses: actions/setup-java@v3
