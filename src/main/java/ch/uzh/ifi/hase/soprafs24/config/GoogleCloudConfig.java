@@ -6,7 +6,6 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import java.io.IOException;
-import java.util.Base64;
 
 @Configuration
 public class GoogleCloudConfig {
@@ -25,29 +24,3 @@ public class GoogleCloudConfig {
     
     } 
 }
-
-// @Configuration
-// public class GoogleCloudConfig {
-
-//     @Bean
-//     public Storage googleStorage() throws IOException {
-//         String base64Credentials = System.getenv("GCP_SERVICE_CREDENTIALS");
-
-//         GoogleCredentials credentials;
-//         if (base64Credentials != null && !base64Credentials.isEmpty()) {
-//             System.out.println("✅ Loading GCP credentials from GCP_SERVICE_CREDENTIALS env var");
-//             byte[] decodedBytes = Base64.getDecoder().decode(base64Credentials);
-//             try (InputStream credentialsStream = new ByteArrayInputStream(decodedBytes)) {
-//                 credentials = GoogleCredentials.fromStream(credentialsStream);
-//             }
-//         } else {
-//             System.out.println("⚠️ GCP_SERVICE_CREDENTIALS not set, using Application Default Credentials");
-//             credentials = GoogleCredentials.getApplicationDefault();
-//         }
-
-//         return StorageOptions.newBuilder()
-//                 .setCredentials(credentials)
-//                 .build()
-//                 .getService();
-//     }
-// }
