@@ -13,6 +13,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      
+      - name: Set up Google Cloud credentials file
+        run: |
+          echo "${{ secrets.GCP_SERVICE_CREDENTIALS }}" > /tmp/gcp-credentials.json
+          export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcp-credentials.json"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -33,6 +39,9 @@ jobs:
       - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GCP_SERVICE_CREDENTIALS: ${{ secrets.GCP_SERVICE_CREDENTIALS }}
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SERVICE_CREDENTIALS }}
         run: ./gradlew build sonar --info
+      
+      - name: Build and test
+        run: ./gradlew test
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-credentials.json  # Point to the temporary credentials file
