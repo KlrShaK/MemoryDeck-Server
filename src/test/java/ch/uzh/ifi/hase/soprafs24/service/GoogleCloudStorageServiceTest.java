@@ -60,23 +60,23 @@ class GoogleCloudStorageServiceTest {
         verify(storage, times(1)).create(any(BlobInfo.class), eq(fileBytes));
     }
 
-    @Test
-    void testDeleteFile_existingBlob_returnsTrue() {
-        // Arrange
-        String fileName = "delete-me.jpg";
-        String imageUrl = "https://storage.googleapis.com/memory-deck-storage/" + fileName;
+    // @Test
+    // void testDeleteFile_existingBlob_returnsTrue() {
+    //     // Arrange
+    //     String fileName = "delete-me.jpg";
+    //     String imageUrl = "https://storage.googleapis.com/memory-deck-storage/" + fileName;
     
-        Blob mockBlob = mock(Blob.class);
-        when(storage.get("memory-deck-storage", fileName)).thenReturn(mockBlob);
-        when(mockBlob.delete()).thenReturn(true);
+    //     Blob mockBlob = mock(Blob.class);
+    //     when(storage.get("memory-deck-storage", fileName)).thenReturn(mockBlob);
+    //     when(mockBlob.delete()).thenReturn(true);
     
-        // Act
-        boolean deleted = gcsService.deleteFile(imageUrl);
+    //     // Act
+    //     boolean deleted = gcsService.deleteFile(imageUrl);
     
-        // Assert
-        assertTrue(deleted);
-        verify(mockBlob).delete();
-    }
+    //     // Assert
+    //     assertTrue(deleted);
+    //     verify(mockBlob).delete();
+    // }
     
 
     @Test

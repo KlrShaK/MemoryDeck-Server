@@ -4,6 +4,8 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
+
 import org.springframework.stereotype.Service;
 
 @Service
@@ -38,7 +40,7 @@ public class GoogleCloudStorageService {
             String bucketName = this.bucketName;
             String fileName = extractFileNameFromUrl(imageUrl);
 
-            // Storage storage = StorageOptions.getDefaultInstance().getService();
+            Storage storage = StorageOptions.getDefaultInstance().getService();
             Blob blob = storage.get(bucketName, fileName);
 
             if (blob != null) {
