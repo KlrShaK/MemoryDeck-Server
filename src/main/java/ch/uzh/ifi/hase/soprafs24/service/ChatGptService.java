@@ -15,8 +15,8 @@ public class ChatGptService {
 
     // TODO ' export OPENAI_API_KEY=your_actual_api_key_here ' add this to bashrc file,
     //  never NEVER push your api key to GitHub !!!
-    @Value("${openai.api.key}")
-    private String openaiApiKey;
+    // @Value("${openai.api.key}")
+    private String openaiApiKey = System.getenv("OPENAI_API_KEY");
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();

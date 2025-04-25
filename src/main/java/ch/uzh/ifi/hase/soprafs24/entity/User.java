@@ -22,6 +22,11 @@ import java.util.List;
  * - unique = true -> this value must be unqiue across the database -> composes
  * the primary key
  */
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter 
+@Setter // Generates getters, setters automatically
 @Entity
 @Table(name = "user")
 public class User implements Serializable {
@@ -57,78 +62,5 @@ public class User implements Serializable {
   @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
   @JsonIgnore
   private List<Deck> decks = new ArrayList<>();
-
-
-  public Long getId() {
-    return id;
-  }
-
-  public void setId(Long id) {
-    this.id = id;
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  public void setName(String name) {
-    this.name = name;
-  }
-
-  public String getUsername() {
-    return username;
-  }
-
-  public void setUsername(String username) {
-    this.username = username;
-  }
-
-  public String getToken() {
-    return token;
-  }
-
-  public void setToken(String token) {
-    this.token = token;
-  }
-
-  public UserStatus getStatus() {
-    return status;
-  }
-
-  public void setStatus(UserStatus status) {
-    this.status = status;
-  }
-
-  public String getPassword() {
-    return password;
-  }
-
-  public void setPassword(String password) {
-    this.password = password;
-  }
-
-  public Date getCreationDate() {
-    return creationDate;
-  }
-
-  public void setCreationDate(Date creationDate) {
-    this.creationDate = creationDate;
-  }
-
-  public Date getBirthday() {
-    return birthday;
-  }
-
-  public void setBirthday(Date birthday) {
-    this.birthday = birthday;
-  }
-
-  public List<Deck> getDecks() {
-    return decks;
-  }
-
-  public void setDecks(List<Deck> decks) {
-      this.decks = decks;
-  }
 
 }

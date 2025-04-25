@@ -19,8 +19,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import javax.transaction.Transactional;
+
 
 @Service
+@Transactional
 public class FlashcardService {
 
     private final FlashcardRepository flashcardRepository;
@@ -114,7 +117,10 @@ public class FlashcardService {
             deck.setFlashcards(flashcards);
         }
 
-        return deckRepository.save(deck);
+        deckRepository.save(deck);
+        deckRepository.flush();
+
+        return deck;
     }
 
 
@@ -125,13 +131,15 @@ public class FlashcardService {
         existingDeck.setIsPublic(updatedDeck.getIsPublic());
 
         List<Flashcard> flashcards = existingDeck.getFlashcards();
-
+        
         for (Flashcard flashcard : flashcards) {
             flashcard.setFlashcardCategory(existingDeck.getDeckCategory());
         }
 
         flashcardRepository.saveAll(flashcards);
         deckRepository.save(existingDeck);
+        deckRepository.flush();
+        flashcardRepository.flush();
     }
 
     public void deleteDeck(Long id) {
@@ -139,6 +147,7 @@ public class FlashcardService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Deck not found");
         }
         deckRepository.deleteById(id);
+        deckRepository.flush();
     }
 
     public List<Flashcard> getAllFlashcardsForDeck(Long deckId) {
@@ -148,9 +157,83 @@ public class FlashcardService {
 
     public Flashcard getCardById(Long cardId) {
         return flashcardRepository.findById(cardId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Flashcard with ID " + cardId + " not found"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Flashcard with ID " + cardId + " not found"));
+    } 
+
+
+    public Flashcard createFlashcard(Long deckId, Flashcard flashcard) {
+        Deck deck = getDeckById(deckId);
+        flashcard.setDeck(deck);
+        flashcard.setFlashcardCategory(deck.getDeckCategory());
+        checkIfAnswerIsDuplicated(flashcard);
+        flashcardRepository.save(flashcard);
+        flashcardRepository.flush();;
+        return flashcard; 
+    }
+    
+    private void checkIfAnswerIsDuplicated(Flashcard flashcardToBeChecked) {
+        String correctAnswer = flashcardToBeChecked.getAnswer();
+        String[] wrongAnswers = flashcardToBeChecked.getWrongAnswers();
+    
+        for (String wrongAnswer : wrongAnswers) {
+            if (correctAnswer.equals(wrongAnswer)) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "The correct answer must not appear in the wrong answers list!"
+                );
+            }
+        }
     }
 
-    // TODO updateFlashcard,deleteFlashcard,removeImageFromFlashcard, createFlashcard, checkIfAnswerIsDuplicated
+    public void updateFlashcard(Long flashcardId, Flashcard updatedFlashcard) {
+        Optional<Flashcard> existingFlashcardOptional = flashcardRepository.findById(flashcardId);
+
+        if (existingFlashcardOptional.isPresent()) {
+            Flashcard existingFlashcard = existingFlashcardOptional.get();
+
+            // Update fields
+            if (updatedFlashcard.getDate() != null) {
+                existingFlashcard.setDate(updatedFlashcard.getDate());
+            }
+            if (updatedFlashcard.getDescription() != null) {
+                existingFlashcard.setDescription(updatedFlashcard.getDescription());
+            }
+            // flashcard category and isPublic is dependent on the deck so it cannot be updated
+            if (updatedFlashcard.getAnswer() != null) {
+                existingFlashcard.setAnswer(updatedFlashcard.getAnswer());
+            }
+            if (updatedFlashcard.getWrongAnswers() != null) {
+                existingFlashcard.setWrongAnswers(updatedFlashcard.getWrongAnswers());
+            }
+            if (updatedFlashcard.getImageUrl() != null) {
+                existingFlashcard.setImageUrl(updatedFlashcard.getImageUrl());
+            }
+
+            checkIfAnswerIsDuplicated(existingFlashcard);
+
+            flashcardRepository.save(existingFlashcard);
+            flashcardRepository.flush();
+        } else {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Flashcard not found");
+        }
+    }
+
+    public void deleteFlashcard(Long flashcardId) {
+        Flashcard flashcard = flashcardRepository.findById(flashcardId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Flashcard not found"));
+
+        flashcardRepository.delete(flashcard);  // Use `delete()` instead of `deleteById()` for consistency with your test
+        flashcardRepository.flush();
+    }
+
+    public void removeImageFromFlashcard(String imageUrl) {
+        Flashcard flashcard = flashcardRepository.findByImageUrl(imageUrl);
+        if (flashcard != null) {
+            flashcard.setImageUrl(null);  // Remove the image URL from the flashcard
+            flashcardRepository.save(flashcard);  // Save the updated flashcard
+            flashcardRepository.flush();
+        }
+    }
+
 
 }
