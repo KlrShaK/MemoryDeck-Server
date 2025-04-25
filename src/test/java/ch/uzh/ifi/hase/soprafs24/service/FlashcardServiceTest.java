@@ -9,10 +9,15 @@ import ch.uzh.ifi.hase.soprafs24.repository.FlashcardRepository;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -39,6 +44,150 @@ class FlashcardServiceTest {
         MockitoAnnotations.openMocks(this);
         flashcardService = new FlashcardService(flashcardRepository, userRepository, deckRepository, chatGptService);
     }
+
+
+    /**
+     * A dummy ChatGPT‐style wrapper that contains
+     * an escaped JSON payload under output[0].content[0].text
+     */
+    private String dummyGenerateFlashcardsResponse() {
+        String dummyInner =
+                "{\n" +
+                        "  \"flashcards\": [\n" +
+                        "    {\n" +
+                        "      \"description\": \"What is the capital of France?\",\n" +
+                        "      \"answer\": \"Paris\",\n" +
+                        "      \"wrong_answers\": [\"Berlin\", \"Madrid\", \"Rome\"]\n" +
+                        "    }\n" +
+                        "  ]\n" +
+                        "}";
+        String escaped = dummyInner
+                .replace("\\", "\\\\")
+                .replace("\"",  "\\\"")
+                .replace("\n",  "\\n");
+        return "{\"output\":[{\"content\":[{\"text\":\"" + escaped + "\"}]}]}";
+    }
+
+    /**
+     * Test the private parseFlashcardsFromJson via reflection,
+     * for a valid payload.
+     */
+    @Test
+    void parseFlashcardsFromJson_validJson_returnsList() throws Exception {
+        String innerJson =
+                "{\n" +
+                        "  \"flashcards\": [\n" +
+                        "    {\n" +
+                        "      \"description\": \"What is the capital of France?\",\n" +
+                        "      \"answer\": \"Paris\",\n" +
+                        "      \"wrong_answers\": [\"Berlin\", \"Madrid\", \"Rome\"]\n" +
+                        "    }\n" +
+                        "  ]\n" +
+                        "}";
+
+        // reflectively call private method
+        Method m = FlashcardService.class
+                .getDeclaredMethod("parseFlashcardsFromJson", String.class);
+        m.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        List<Flashcard> cards = (List<Flashcard>) m.invoke(flashcardService, innerJson);
+
+        assertEquals(1, cards.size());
+        Flashcard c = cards.get(0);
+        assertEquals("What is the capital of France?", c.getDescription());
+        assertEquals("Paris",                    c.getAnswer());
+        assertArrayEquals(new String[]{"Berlin","Madrid","Rome"}, c.getWrongAnswers());
+    }
+
+    /**
+     * When the JSON is missing a top‐level "flashcards" array,
+     * parseFlashcardsFromJson should throw a ResponseStatusException.
+     */
+    @Test
+    void parseFlashcardsFromJson_missingFlashcards_throws() throws Exception {
+        String badJson = "{ \"foo\": [] }";
+
+        Method m = FlashcardService.class
+                .getDeclaredMethod("parseFlashcardsFromJson", String.class);
+        m.setAccessible(true);
+
+        InvocationTargetException ite = assertThrows(
+                InvocationTargetException.class,
+                () -> m.invoke(flashcardService, badJson)
+        );
+        assertTrue(
+                ite.getCause() instanceof ResponseStatusException,
+                "Expected a ResponseStatusException when 'flashcards' key is missing"
+        );
+    }
+
+    /**
+     * Test createDeck(...) in the AI‐generated branch without
+     * making any real HTTP calls. We stub ChatGptService to return
+     * our dummy wrapper, then stub extractGeneratedText to return
+     * the unescaped inner JSON, and finally verify that createDeck
+     * populates the Deck.flashcards list.
+     */
+    @Test
+    void createDeck_aiGenerated_success() {
+        // 1) stub user lookup
+        User u = new User();
+        u.setId(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(u));
+
+        // 2) prepare a deck marked as AI‐generated
+        Deck deck = new Deck();
+        deck.setTitle("AI Deck");
+        deck.setDeckCategory(FlashcardCategory.SCIENCE);
+        deck.setIsAiGenerated(true);
+        deck.setAiPrompt("some prompt");
+
+        // 3) stub ChatGptService
+        String wrapper = dummyGenerateFlashcardsResponse();
+        when(chatGptService.generateFlashcards(anyString(), eq(10))).thenReturn(wrapper);
+
+        String innerJson =
+                "{\n" +
+                        "  \"flashcards\": [\n" +
+                        "    {\n" +
+                        "      \"description\": \"What is the capital of France?\",\n" +
+                        "      \"answer\": \"Paris\",\n" +
+                        "      \"wrong_answers\": [\"Berlin\", \"Madrid\", \"Rome\"]\n" +
+                        "    }\n" +
+                        "  ]\n" +
+                        "}";
+        when(chatGptService.extractGeneratedText(wrapper)).thenReturn(innerJson);
+
+        // 4) call under test
+        Deck result = flashcardService.createDeck(1L, deck, 10);
+
+        // 5) verify
+        assertNotNull(result.getFlashcards());
+        assertEquals(1, result.getFlashcards().size());
+
+        Flashcard created = result.getFlashcards().get(0);
+        assertEquals("What is the capital of France?", created.getDescription());
+        assertEquals("Paris",                    created.getAnswer());
+        assertArrayEquals(new String[]{"Berlin","Madrid","Rome"}, created.getWrongAnswers());
+
+        verify(deckRepository).save(deck);
+    }
+
+    /**
+     * If the userId doesn't exist, createDeck should throw.
+     */
+    @Test
+    void createDeck_userNotFound_throws() {
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        Deck dummy = new Deck();
+        assertThrows(
+                ResponseStatusException.class,
+                () -> flashcardService.createDeck(1L, dummy, 5),
+                "Expected a 404 if user not found"
+        );
+    }
+
 
     @Test
     void getDecks_success() {
