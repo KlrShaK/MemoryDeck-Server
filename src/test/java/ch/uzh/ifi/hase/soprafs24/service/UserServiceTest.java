@@ -5,81 +5,334 @@ import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
+import org.mockito.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.*;
+
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 public class UserServiceTest {
 
-  @Mock
-  private UserRepository userRepository;
+    @Mock
+    private UserRepository userRepository;
 
-  @InjectMocks
-  private UserService userService;
+    @InjectMocks
+    private UserService userService;
 
-  private User testUser;
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
 
-  @BeforeEach
-  public void setup() {
-    MockitoAnnotations.openMocks(this);
+    // ---------- getUsers() ----------
 
-    // given
-    testUser = new User();
-    testUser.setId(1L);
-    testUser.setName("testName");
-    testUser.setUsername("testUsername");
+    @Test
+    void getUsers_returnsAllUsers() {
+        List<User> users = List.of(new User(), new User());
+        when(userRepository.findAll()).thenReturn(users);
 
-    // when -> any object is being save in the userRepository -> return the dummy
-    // testUser
-    Mockito.when(userRepository.save(Mockito.any())).thenReturn(testUser);
-  }
+        List<User> result = userService.getUsers();
+        assertSame(users, result);
+    }
 
-  // @Test
-  // public void createUser_validInputs_success() {
-  //   // when -> any object is being save in the userRepository -> return the dummy
-  //   // testUser
-  //   User createdUser = userService.createUser(testUser);
+    // ---------- createUser() ----------
 
-  //   // then
-  //   Mockito.verify(userRepository, Mockito.times(1)).save(Mockito.any());
+    @Test
+    void createUser_withoutPassword_setsDefaultsAndSaves() {
+        User input = new User();
+        input.setUsername("alice");
 
-  //   assertEquals(testUser.getId(), createdUser.getId());
-  //   assertEquals(testUser.getName(), createdUser.getName());
-  //   assertEquals(testUser.getUsername(), createdUser.getUsername());
-  //   assertNotNull(createdUser.getToken());
-  //   assertEquals(UserStatus.OFFLINE, createdUser.getStatus());
-  // }
+        // no existing user
+        when(userRepository.findByUsername("alice")).thenReturn(null);
+        // echo back what was passed, so we can inspect it
+        when(userRepository.save(any(User.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
 
-  // @Test
-  // public void createUser_duplicateName_throwsException() {
-  //   // given -> a first user has already been created
-  //   userService.createUser(testUser);
+        User created = userService.createUser(input);
 
-  //   // when -> setup additional mocks for UserRepository
-  //   Mockito.when(userRepository.findByName(Mockito.any())).thenReturn(testUser);
-  //   Mockito.when(userRepository.findByUsername(Mockito.any())).thenReturn(null);
+        assertNotNull(created.getToken(), "token should be generated");
+        assertEquals(UserStatus.ONLINE, created.getStatus());
+        assertNotNull(created.getCreationDate(), "creationDate should be set");
+        // password was null, so remains null
+        assertNull(created.getPassword());
 
-  //   // then -> attempt to create second user with same user -> check that an error
-  //   // is thrown
-  //   assertThrows(ResponseStatusException.class, () -> userService.createUser(testUser));
-  // }
+        verify(userRepository).save(created);
+        verify(userRepository).flush();
+    }
 
-  @Test
-  public void createUser_duplicateInputs_throwsException() {
-    // given -> a first user has already been created
-    userService.createUser(testUser);
+    @Test
+    void createUser_withPassword_encodesPassword() {
+        User input = new User();
+        input.setUsername("bob");
+        input.setPassword("secret");
 
-    // when -> setup additional mocks for UserRepository
-    Mockito.when(userRepository.findByName(Mockito.any())).thenReturn(testUser);
-    Mockito.when(userRepository.findByUsername(Mockito.any())).thenReturn(testUser);
+        when(userRepository.findByUsername("bob")).thenReturn(null);
+        when(userRepository.save(any(User.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
 
-    // then -> attempt to create second user with same user -> check that an error
-    // is thrown
-    assertThrows(ResponseStatusException.class, () -> userService.createUser(testUser));
-  }
+        User created = userService.createUser(input);
 
+        assertNotNull(created.getPassword(), "password should be encoded");
+        assertNotEquals("secret", created.getPassword());
+        // verify BCrypt matches
+        assertTrue(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+                .matches("secret", created.getPassword()));
+
+        verify(userRepository).save(created);
+        verify(userRepository).flush();
+    }
+
+    @Test
+    void createUser_nullUsername_throwsBadRequest() {
+        User input = new User();
+        input.setUsername(null);
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.createUser(input)
+        );
+        assertEquals(400, ex.getStatus().value());
+        assertTrue(ex.getReason().contains("Username must not be empty"));
+    }
+
+    @Test
+    void createUser_emptyUsername_throwsBadRequest() {
+        User input = new User();
+        input.setUsername("   ");
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.createUser(input)
+        );
+        assertEquals(400, ex.getStatus().value());
+        assertTrue(ex.getReason().contains("Username must not be empty"));
+    }
+
+    @Test
+    void createUser_duplicateUsername_throwsConflict() {
+        User input = new User();
+        input.setUsername("charlie");
+
+        when(userRepository.findByUsername("charlie"))
+                .thenReturn(new User()); // simulate existing user
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.createUser(input)
+        );
+        assertEquals(409, ex.getStatus().value());
+        assertTrue(ex.getReason().contains("already taken"));
+    }
+
+    // ---------- updateUser() ----------
+
+    @Test
+    void updateUser_existing_updatesFields() {
+        User existing = new User();
+        existing.setId(100L);
+        existing.setUsername("oldName");
+        existing.setBirthday(new Date(0));
+
+        when(userRepository.findById(100L))
+                .thenReturn(Optional.of(existing));
+
+        User updates = new User();
+        updates.setUsername("newName");
+        Date later = new Date(123456789);
+        updates.setBirthday(later);
+
+        userService.updateUser(100L, updates);
+
+        assertEquals("newName", existing.getUsername());
+        assertEquals(later, existing.getBirthday());
+        verify(userRepository).save(existing);
+    }
+
+    @Test
+    void updateUser_partialNull_doesNotOverwriteNulls() {
+        User existing = new User();
+        existing.setId(200L);
+        existing.setUsername("keep");
+        existing.setBirthday(new Date(0));
+
+        when(userRepository.findById(200L))
+                .thenReturn(Optional.of(existing));
+
+        User updates = new User();
+        updates.setUsername(null);
+        updates.setBirthday(null);
+
+        userService.updateUser(200L, updates);
+
+        assertEquals("keep", existing.getUsername());
+        assertEquals(new Date(0), existing.getBirthday());
+        verify(userRepository).save(existing);
+    }
+
+    @Test
+    void updateUser_notFound_throwsNotFound() {
+        when(userRepository.findById(300L))
+                .thenReturn(Optional.empty());
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.updateUser(300L, new User())
+        );
+        assertEquals(404, ex.getStatus().value());
+    }
+
+    // ---------- getUserById() ----------
+
+    @Test
+    void getUserById_found_returnsUser() {
+        User u = new User();
+        when(userRepository.findById(10L))
+                .thenReturn(Optional.of(u));
+
+        assertSame(u, userService.getUserById(10L));
+    }
+
+    @Test
+    void getUserById_notFound_throwsNotFound() {
+        when(userRepository.findById(20L))
+                .thenReturn(Optional.empty());
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.getUserById(20L)
+        );
+        assertEquals(404, ex.getStatus().value());
+        assertTrue(ex.getReason().contains("User with ID 20 not found"));
+    }
+
+    // ---------- loginUser() ----------
+
+    @Test
+    void loginUser_nullUsername_throwsBadRequest() {
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.loginUser(null, "pw")
+        );
+        assertEquals(400, ex.getStatus().value());
+        assertTrue(ex.getReason().contains("Username must not be empty"));
+    }
+
+    @Test
+    void loginUser_emptyUsername_throwsBadRequest() {
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.loginUser("   ", "pw")
+        );
+        assertEquals(400, ex.getStatus().value());
+    }
+
+    @Test
+    void loginUser_nullPassword_throwsBadRequest() {
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.loginUser("user", null)
+        );
+        assertEquals(400, ex.getStatus().value());
+        assertTrue(ex.getReason().contains("Password must not be empty"));
+    }
+
+    @Test
+    void loginUser_emptyPassword_throwsBadRequest() {
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.loginUser("user", " ")
+        );
+        assertEquals(400, ex.getStatus().value());
+    }
+
+    @Test
+    void loginUser_userNotFound_throwsUnauthorized() {
+        when(userRepository.findByUsername("nope"))
+                .thenReturn(null);
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.loginUser("nope", "pw")
+        );
+        assertEquals(401, ex.getStatus().value());
+    }
+
+    @Test
+    void loginUser_invalidPassword_throwsUnauthorized() {
+        String raw = "pass";
+        String encoded = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+                .encode("other");
+        User u = new User();
+        u.setUsername("user");
+        u.setPassword(encoded);
+
+        when(userRepository.findByUsername("user"))
+                .thenReturn(u);
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.loginUser("user", raw)
+        );
+        assertEquals(401, ex.getStatus().value());
+        assertTrue(ex.getReason().contains("Invalid credentials"));
+    }
+
+    @Test
+    void loginUser_success_generatesTokenAndSaves() {
+        String raw = "mypw";
+        String encoded = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+                .encode(raw);
+        User u = new User();
+        u.setUsername("u");
+        u.setPassword(encoded);
+        u.setStatus(UserStatus.OFFLINE);
+
+        when(userRepository.findByUsername("u"))
+                .thenReturn(u);
+
+        // simulate save returning the same user
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        User loggedIn = userService.loginUser("u", raw);
+
+        assertNotNull(loggedIn.getToken());
+        assertEquals(UserStatus.ONLINE, loggedIn.getStatus());
+        verify(userRepository).save(u);
+        verify(userRepository).flush();
+    }
+
+    // ---------- logoutUser() ----------
+
+    @Test
+    void logoutUser_success_clearsTokenAndSaves() {
+        User u = new User();
+        u.setId(55L);
+        u.setToken("abc");
+        u.setStatus(UserStatus.ONLINE);
+
+        when(userRepository.findById(55L))
+                .thenReturn(Optional.of(u));
+        // no need to stub save/flush
+
+        User loggedOut = userService.logoutUser(55L);
+
+        assertNull(loggedOut.getToken());
+        assertEquals(UserStatus.OFFLINE, loggedOut.getStatus());
+        verify(userRepository).save(u);
+        verify(userRepository).flush();
+    }
+
+    @Test
+    void logoutUser_notFound_throwsNotFound() {
+        when(userRepository.findById(66L))
+                .thenReturn(Optional.empty());
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.logoutUser(66L)
+        );
+        assertEquals(404, ex.getStatus().value());
+    }
 }
