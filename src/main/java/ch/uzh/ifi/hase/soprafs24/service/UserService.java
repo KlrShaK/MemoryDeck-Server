@@ -100,6 +100,9 @@ public class UserService {
             if (updatedUser.getBirthday() != null) {
                 existingUser.setBirthday(updatedUser.getBirthday());
             }
+            if (updatedUser.getName() != null) {
+                existingUser.setName(updatedUser.getName());
+            }
             userRepository.save(existingUser);
         } else {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,"User not found");
