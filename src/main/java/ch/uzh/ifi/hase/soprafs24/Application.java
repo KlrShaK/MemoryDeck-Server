@@ -29,8 +29,7 @@ public class Application {
     return new WebMvcConfigurer() {
       @Override
       public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**").allowedOrigins("http://localhost:3000","https://sopra-fs25-group-40-client.vercel.app")
-        .allowedMethods("GET", "POST", "PUT", "DELETE");
+        registry.addMapping("/**").allowedOrigins("*").allowedMethods("*");
       }
     };
   }
