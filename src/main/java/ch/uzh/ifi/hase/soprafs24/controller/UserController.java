@@ -3,6 +3,7 @@ package ch.uzh.ifi.hase.soprafs24.controller;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.UserGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.UserLoginDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.UserPasswordUpdateDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.UserPostDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
@@ -45,6 +46,13 @@ public class UserController {
     public void updateUserInfo(@PathVariable Long id, @RequestBody UserPostDTO updatedUser) {
         userService.updateUser(id, DTOMapper.INSTANCE.convertUserPostDTOtoEntity(updatedUser));
     }
+
+    @PutMapping("/users/{id}/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updatePassword(@PathVariable Long id, @RequestBody UserPasswordUpdateDTO passwordUpdateDTO) {
+        userService.updatePassword(id, passwordUpdateDTO.getOldPassword(), passwordUpdateDTO.getNewPassword());
+    }
+
 
     @GetMapping("/users")
     @ResponseStatus(HttpStatus.OK)
