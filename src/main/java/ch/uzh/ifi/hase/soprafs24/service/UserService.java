@@ -3,17 +3,18 @@ package ch.uzh.ifi.hase.soprafs24.service;
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-// import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import java.util.Optional;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
 import java.util.Date;
@@ -53,6 +54,7 @@ public class UserService {
     if (newUser.getPassword() != null) {
       newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
     }
+
     checkIfUserExists(newUser);
     // saves the given entity but data is only persisted in the database once
     // flush() is called
@@ -114,9 +116,9 @@ public class UserService {
           if (updatedUser.getBirthday() != null) {
               existingUser.setBirthday(updatedUser.getBirthday());
           }
-          // if (updatedUser.getFcmToken() != null) {
-          //   existingUser.setFcmToken(updatedUser.getFcmToken());
-          // }
+          if (updatedUser.getName() != null) {
+              existingUser.setName(updatedUser.getName());
+          }
 
           userRepository.save(existingUser);
       } else {
