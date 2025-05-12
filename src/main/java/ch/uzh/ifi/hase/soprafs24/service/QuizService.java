@@ -80,16 +80,16 @@ public class QuizService {
         User fromUser = inv.getFromUser();
         User toUser = inv.getToUser();
 
-        if (fromUser != null && fromUser.getStatus() == UserStatus.PLAYING) {
+        if (fromUser != null) {
             fromUser.setStatus(UserStatus.ONLINE);
             userRepository.save(fromUser);
         }
         
-        if (toUser != null && toUser.getStatus() == UserStatus.PLAYING) {
+        if (toUser != null) {
             toUser.setStatus(UserStatus.ONLINE);
             userRepository.save(toUser);
         }
-        
+
         if (quiz != null) {
             quizRepository.save(quiz);
         }
