@@ -77,19 +77,6 @@ public class QuizService {
         Invitation inv = getInvitationById(invitationId);
         Quiz quiz = inv.getQuiz();                 // might be null
 
-        User fromUser = inv.getFromUser();
-        User toUser = inv.getToUser();
-
-        if (fromUser != null) {
-            fromUser.setStatus(UserStatus.ONLINE);
-            userRepository.save(fromUser);
-        }
-        
-        if (toUser != null) {
-            toUser.setStatus(UserStatus.ONLINE);
-            userRepository.save(toUser);
-        }
-
         if (quiz != null) {
             quizRepository.save(quiz);
         }
