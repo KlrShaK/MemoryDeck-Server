@@ -63,4 +63,16 @@ public class User implements Serializable {
   @JsonIgnore
   private List<Deck> decks = new ArrayList<>();
 
+  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+  @JsonIgnore
+  private List<Score> scores = new ArrayList<>();
+
+  @OneToMany(mappedBy = "fromUser", cascade = CascadeType.ALL, orphanRemoval = true)
+  @JsonIgnore
+  private List<Invitation> invitationsSent = new ArrayList<>();
+
+  @OneToMany(mappedBy = "toUser", cascade = CascadeType.ALL, orphanRemoval = true)
+  @JsonIgnore
+  private List<Invitation> invitationsReceived = new ArrayList<>();
+
 }

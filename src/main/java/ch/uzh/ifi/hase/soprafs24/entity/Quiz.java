@@ -1,3 +1,4 @@
+// Quiz.java
 package ch.uzh.ifi.hase.soprafs24.entity;
 
 import java.util.Date;
@@ -15,6 +16,8 @@ import javax.persistence.JoinColumn;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -34,6 +37,17 @@ public class Quiz implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // If multiple decks can be used, you already have getDecks().
+    // To store the *actual questions*, let's define a ManyToMany of Flashcards.
+    @ManyToMany
+    @JoinTable(
+            name = "quiz_flashcards",
+            joinColumns = @JoinColumn(name = "quiz_id"),
+            inverseJoinColumns = @JoinColumn(name = "flashcard_id")
+    )
+    private List<Flashcard> selectedFlashcards = new ArrayList<>();
+
+    // Associated decks (for example, if multiple decks/questions are used)
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<Deck> decks = new ArrayList<>();
@@ -42,8 +56,7 @@ public class Quiz implements Serializable {
     @JsonIgnore
     private List<Score> scores = new ArrayList<>();
 
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "invitation_id")
+    @OneToOne(mappedBy = "quiz")
     @JsonIgnore
     private Invitation invitation;
 

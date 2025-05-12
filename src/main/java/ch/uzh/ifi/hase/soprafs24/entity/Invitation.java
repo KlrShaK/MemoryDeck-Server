@@ -1,6 +1,7 @@
 package ch.uzh.ifi.hase.soprafs24.entity;
 
 import java.util.Date;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,15 +26,18 @@ import lombok.Setter;
 @Setter // Generates getters, setters automatically
 @Entity
 @Table(name = "invitation")
-public class Invitation implements Serializable {
+public class Invitation  implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(mappedBy = "invitation", cascade = CascadeType.ALL, orphanRemoval = true)
+//    @OneToOne(mappedBy = "invitation", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE}
+            , orphanRemoval = false)
     @JsonIgnore
     private Quiz quiz;
 

@@ -5,6 +5,7 @@ import java.util.List;
 
 import ch.uzh.ifi.hase.soprafs24.constant.FlashcardCategory;
 import ch.uzh.ifi.hase.soprafs24.entity.Flashcard;
+import ch.uzh.ifi.hase.soprafs24.entity.Invitation;
 import ch.uzh.ifi.hase.soprafs24.entity.Quiz;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
 import lombok.Getter;
@@ -22,9 +23,11 @@ public class DeckDTO {
 
     private FlashcardCategory deckCategory;
 
-    private List<Flashcard> flashcards;
+    private List<Flashcard> flashcards; 
 
     private Quiz quiz;
+
+    private Invitation invitation;
 
     private Boolean isPublic;
 
