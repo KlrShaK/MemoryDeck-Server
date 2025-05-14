@@ -22,13 +22,16 @@ public class QuizMapper {
     private final ScoreRepository scoreRepository;
     private final QuizRepository  quizRepository;
     private final DeckRepository  deckRepository;
+    private final ScoreMapper  scoreMapper;
 
     public QuizMapper(ScoreRepository scoreRepository,
                       QuizRepository quizRepository,
-                      DeckRepository deckRepository) {
+                      DeckRepository deckRepository,
+                      ScoreMapper  scoreMapper) {
         this.scoreRepository = scoreRepository;
         this.quizRepository  = quizRepository;
         this.deckRepository  = deckRepository;
+        this.scoreMapper = scoreMapper;
     }
 
     /* ───────────────────── DTO ↔ Entity helpers ───────────────────── */
@@ -43,11 +46,15 @@ public class QuizMapper {
         /* identifiers & invitation side (from main) */
         dto.setId(quiz.getId());
         dto.setDecks(quiz.getDecks());
-        dto.setScores(quiz.getScores());
+        dto.setScores(scoreMapper.toDTOList(quiz.getScores()));
 
         /* single-deck shortcut (from shak_branch) */
         if (quiz.getDecks() != null && !quiz.getDecks().isEmpty()) {
             dto.setDeckId(quiz.getDecks().get(0).getId());
+        }
+
+        if (quiz.getInvitation() != null){
+            dto.setInvitationId(quiz.getInvitation().getId());
         }
 
         /* runtime metadata (shared) */
@@ -74,24 +81,24 @@ public class QuizMapper {
     /**
      * Only used in a few legacy tests – kept but trimmed to current DTO fields.
      */
-    public Quiz toEntity(QuizDTO dto) {
-        Quiz quiz = new Quiz();
-        quiz.setId(dto.getId());
-        quiz.setDecks(dto.getDecks());
-        quiz.setScores(dto.getScores());
-        quiz.setStartTime(dto.getStartTime());
-        quiz.setEndTime(dto.getEndTime());
-        quiz.setTimeLimit(dto.getTimeLimit());
-        quiz.setIsMultiple(dto.getIsMultiple());
-        if (dto.getQuizStatus() != null) {
-            try {
-                quiz.setQuizStatus(QuizStatus.valueOf(dto.getQuizStatus()));
-            } catch (IllegalArgumentException e) {
-                quiz.setQuizStatus(null);
-            }
-        }
-        return quiz;
-    }
+    // public Quiz toEntity(QuizDTO dto) {
+    //     Quiz quiz = new Quiz();
+    //     quiz.setId(dto.getId());
+    //     quiz.setDecks(dto.getDecks());
+    //     quiz.setScores(dto.getScores());
+    //     quiz.setStartTime(dto.getStartTime());
+    //     quiz.setEndTime(dto.getEndTime());
+    //     quiz.setTimeLimit(dto.getTimeLimit());
+    //     quiz.setIsMultiple(dto.getIsMultiple());
+    //     if (dto.getQuizStatus() != null) {
+    //         try {
+    //             quiz.setQuizStatus(QuizStatus.valueOf(dto.getQuizStatus()));
+    //         } catch (IllegalArgumentException e) {
+    //             quiz.setQuizStatus(null);
+    //         }
+    //     }
+    //     return quiz;
+    // }
 
     /* ───────────────────── Invitation → Quiz factory (from main) ───────────────────── */
 
@@ -106,6 +113,7 @@ public class QuizMapper {
         quiz.setTimeLimit(invitation.getTimeLimit());
         quiz.setQuizStatus(QuizStatus.WAITING);
         quiz.setIsMultiple(true);
+        quiz.setInvitation(invitation);
 
         /* 1 make sure decks are managed entities */
         List<Deck> managedDecks = invitation.getDecks().stream()

@@ -5,7 +5,6 @@ import java.util.List;
 
 import ch.uzh.ifi.hase.soprafs24.entity.Deck;
 import ch.uzh.ifi.hase.soprafs24.entity.Invitation;
-import ch.uzh.ifi.hase.soprafs24.entity.Score;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -21,9 +20,9 @@ public class QuizDTO {
     private Long id;
 
     private List<Deck>   decks;       // full decks for host/guest view
-    private List<Score>  scores;      // per-user scores
-    private Invitation   invitation;  // original invitation entity
-
+    private List<ScoreDTO>  scores;      // per-user scores
+    
+    private Long   invitationId;  // original invitation entity
     private Long   deckId;       // single deck reference for quick lookup
     private Date   startTime;
     private Date   endTime;

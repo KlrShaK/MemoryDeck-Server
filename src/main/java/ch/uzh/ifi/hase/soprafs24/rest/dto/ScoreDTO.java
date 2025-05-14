@@ -1,7 +1,5 @@
 package ch.uzh.ifi.hase.soprafs24.rest.dto;
 
-import ch.uzh.ifi.hase.soprafs24.entity.Quiz;
-import ch.uzh.ifi.hase.soprafs24.entity.User;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,9 +9,9 @@ public class ScoreDTO {
 
     private Long id;
 
-    private Quiz quiz; 
+    private Long quizId; 
 
-    private User user; 
+    private Long userId; 
 
     private int correctQuestions;
 

@@ -15,6 +15,7 @@ public class StatisticsMapper {
         dto.setCorrectQuestions(s.getScore());
         dto.setNumberOfAttempts(s.getNumberOfAttempts());
         dto.setTimeTakenSeconds(s.getTimeTaken());
+        dto.setQuizDate(s.getQuizDate());
         dto.setIsWinner(s.getIsWinner());
         return dto;
     }
