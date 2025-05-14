@@ -1,10 +1,10 @@
 package ch.uzh.ifi.hase.soprafs24.repository;
 
-import ch.uzh.ifi.hase.soprafs24.entity.Quiz;
 import ch.uzh.ifi.hase.soprafs24.entity.Statistics;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import javax.persistence.LockModeType;
@@ -17,7 +17,9 @@ public interface StatisticsRepository extends JpaRepository<Statistics, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Statistics s "
             + "where s.quiz.id = :quizId and s.user.id = :userId")
-    Optional<Statistics> lockByQuizIdAndUserId(Long quizId, Long userId);
+    Optional<Statistics> lockByQuizIdAndUserId(
+        @Param("quizId") Long quizId,
+        @Param("userId") Long userId);
     List<Statistics> findByQuiz_Id(Long quizId);
     List<Statistics> findByUser_Id(Long userId);
 
