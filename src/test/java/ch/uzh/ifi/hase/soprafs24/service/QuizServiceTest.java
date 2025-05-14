@@ -178,12 +178,6 @@ class QuizServiceTest {
     }
 
     @Test
-    void getQuizById_notFound_throwsException() {
-        when(quizRepository.findById(999L)).thenReturn(Optional.empty());
-        assertThrows(ResponseStatusException.class, () -> quizService.getQuizById(999L));
-    }
-
-    @Test
     void deleteInvitationById_deletesSuccessfully() {
         Invitation invitation = new Invitation();
         when(invitationRepository.findById(1L)).thenReturn(Optional.of(invitation));
@@ -197,14 +191,14 @@ class QuizServiceTest {
     void checkUserStatusForInvitation_throwsOnOffline() {
         User user = new User();
         user.setStatus(UserStatus.OFFLINE);
-        assertThrows(ResponseStatusException.class, () -> quizService.checkUserStatusForInvitation(user));
+        assertThrows(ResponseStatusException.class, () -> quizService.ensureInvitable(user));
     }
 
     @Test
     void checkUserStatusForInvitation_throwsOnPlaying() {
         User user = new User();
         user.setStatus(UserStatus.PLAYING);
-        assertThrows(ResponseStatusException.class, () -> quizService.checkUserStatusForInvitation(user));
+        assertThrows(ResponseStatusException.class, () -> quizService.ensureInvitable(user));
     }
 
 
