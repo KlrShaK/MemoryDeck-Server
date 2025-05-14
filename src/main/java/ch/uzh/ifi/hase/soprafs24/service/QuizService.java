@@ -116,8 +116,8 @@ public class QuizService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one deck must be selected.");
         }
         inv.setDecks(decks);
-
-        return invitationRepository.saveAndFlush(inv);
+        invitationRepository.saveAndFlush(inv);
+        return inv;
     }
 
     /** Factory: Invitation → Quiz. */
@@ -129,7 +129,8 @@ public class QuizService {
         inv.setQuiz(quiz);                // set FK
         invitationRepository.saveAndFlush(inv);   // save owning side
 //        quizRepository.flush();
-        return quizRepository.saveAndFlush(quiz);  // already managed & saved
+        quizRepository.saveAndFlush(quiz);
+        return quiz;  // already managed & saved
     }
 
     @Transactional

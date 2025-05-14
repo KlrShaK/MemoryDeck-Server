@@ -54,17 +54,33 @@ class ScoreMapperTest {
     @Test
     void testToDTOList() {
         // Arrange
+        User user1 = new User();
+        user1.setId(1L);
+        user1.setUsername("testUser");
+
+        User user2 = new User();
+        user2.setId(2L);
+        user2.setUsername("testUser1");
+
+        Quiz quiz = new Quiz();
+        quiz.setId(1L);
+
         Score score1 = new Score();
         score1.setId(1L);
         score1.setCorrectQuestions(3);
         score1.setTotalQuestions(5);
+        score1.setUser(user1);
+        score1.setQuiz(quiz);
 
         Score score2 = new Score();
         score2.setId(2L);
         score2.setCorrectQuestions(7);
         score2.setTotalQuestions(10);
+        score2.setUser(user2);
+        score2.setQuiz(quiz);
 
         List<Score> scores = Arrays.asList(score1, score2);
+        quiz.setScores(scores);
 
         // Act
         List<ScoreDTO> dtoList = scoreMapper.toDTOList(scores);

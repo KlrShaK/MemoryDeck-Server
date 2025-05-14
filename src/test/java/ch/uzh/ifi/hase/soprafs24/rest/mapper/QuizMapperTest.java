@@ -48,6 +48,10 @@ public class QuizMapperTest {
         quiz.setDecks(List.of(deck));
 
         Score score = new Score();
+        score.setId(1L);
+        score.setCorrectQuestions(7);
+        score.setTotalQuestions(10);
+        score.setQuiz(quiz);
         quiz.setScores(List.of(score));
 
         Invitation invitation = new Invitation();
@@ -63,9 +67,9 @@ public class QuizMapperTest {
         // Assert
         assertEquals(quiz.getId(), dto.getId());
         assertEquals(quiz.getTimeLimit(), dto.getTimeLimit());
-        assertEquals(quiz.getQuizStatus(), dto.getQuizStatus());
+        assertEquals(quiz.getQuizStatus().toString(), dto.getQuizStatus());
         assertEquals(quiz.getDecks(), dto.getDecks());
-        assertEquals(quiz.getScores(), dto.getScores());
+        assertEquals(scoreMapper.toDTOList(quiz.getScores()), dto.getScores());
         assertEquals(quiz.getInvitation().getId(), dto.getInvitationId());
         // assertEquals(quiz.getWinner(), dto.getWinner());
         assertTrue(dto.getIsMultiple());
@@ -119,6 +123,11 @@ public class QuizMapperTest {
         invitation.setDecks(new ArrayList<>());
         Deck deck = new Deck();
         deck.setId(1L);
+        Flashcard flashcard = new Flashcard();
+        flashcard.setId(1L);
+        flashcard.setDescription("temp");
+        flashcard.setDeck(deck);
+        deck.setFlashcards(Arrays.asList(flashcard));
         invitation.getDecks().add(deck);
 
         User fromUser = new User();

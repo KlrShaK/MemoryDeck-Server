@@ -100,7 +100,7 @@ class QuizServiceTest {
         assertEquals(to, saved.getToUser());
         assertEquals(1, saved.getDecks().size());
         assertFalse(saved.getIsAccepted());
-        verify(invitationRepository).save(any());
+        verify(invitationRepository).saveAndFlush(any());
     }
 
     @Test
@@ -125,7 +125,7 @@ class QuizServiceTest {
         assertTrue(invitation.getIsAccepted());
         assertNotNull(invitation.getIsAcceptedDate());
 
-        verify(quizRepository).save(quiz);
+        verify(quizRepository).saveAndFlush(quiz);
         verify(userRepository).save(sender);
         verify(userRepository).save(receiver);
     }
@@ -172,7 +172,7 @@ class QuizServiceTest {
 
         assertEquals(accepted1, result);
         assertEquals(UserStatus.ONLINE, toUser2.getStatus());
-        verify(userRepository).save(toUser2);
+        verify(userRepository).saveAndFlush(toUser2);
         verify(quizRepository).delete(quiz2);
         verify(invitationRepository).delete(accepted2);
     }
@@ -252,8 +252,8 @@ class QuizServiceTest {
 
         verify(invitationRepository, times(1)).findById(1L);
         verify(quizMapper, times(1)).fromInvitationToEntity(mockInvitation);
-        verify(quizRepository, times(1)).save(mockQuiz);
-        verify(invitationRepository, times(1)).save(mockInvitation);
+        verify(quizRepository, times(1)).saveAndFlush(mockQuiz);
+        verify(invitationRepository, times(1)).saveAndFlush(mockInvitation);
     }
 
 }
