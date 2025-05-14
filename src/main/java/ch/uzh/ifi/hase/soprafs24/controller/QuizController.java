@@ -43,16 +43,25 @@ public class QuizController {
     }
 
     @GetMapping("/invitation/{id}")
+    @ResponseStatus(HttpStatus.OK)
     public InvitationDTO getQuizInvitation(@PathVariable Long id) {
         return invitationMapper.toDTO(quizService.getInvitationById(id));
     }
 
     @GetMapping("/invitation/senders")
+    @ResponseStatus(HttpStatus.OK)
     public List<InvitationDTO> getInvitesBySender(@RequestParam Long fromUserId) {
         return invitationMapper.toDTOList(quizService.getInvitationByFromUserId(fromUserId));
     }
 
+    @DeleteMapping("/invitation/senders/cancel")
+    @ResponseStatus(HttpStatus.OK)
+    public void senderCancelled(@RequestParam Long invitationId) {
+        quizService.cancelInvitationBySender(invitationId);
+    }
+
     @GetMapping("/invitation/receivers")
+    @ResponseStatus(HttpStatus.OK)
     public List<InvitationDTO> getInvitesByReceiver(@RequestParam Long toUserId) {
         return invitationMapper.toDTOList(quizService.getInvitationByToUserId(toUserId));
     }
@@ -70,6 +79,7 @@ public class QuizController {
     }
 
     @GetMapping("/invitation/accepted")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<InvitationDTO> acceptedInvite(@RequestParam Long fromUserId) {
         Invitation inv = quizService.findInvitationByFromUserIdAndIsAcceptedTrue(fromUserId);
         return inv == null ? ResponseEntity.ok().body(null)
@@ -85,6 +95,7 @@ public class QuizController {
     /* ───────────── Quiz endpoints ───────────── */
 
     @PostMapping("/start")
+    @ResponseStatus(HttpStatus.CREATED)
     public QuizDTO startQuiz(@RequestBody QuizStartRequestDTO req) {
         if (req.getDeckId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Deck ID is required");
@@ -99,6 +110,7 @@ public class QuizController {
     }
 
     @PostMapping("/answer")
+    @ResponseStatus(HttpStatus.CREATED)
     public QuizAnswerResponseDTO answer(@RequestBody QuizAnswerRequestDTO req) {
         if (req.getQuizId() == null || req.getFlashcardId() == null || req.getUserId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing required fields");
@@ -108,12 +120,20 @@ public class QuizController {
     }
 
     @GetMapping("/{quizId}/currentQuestion")
+    @ResponseStatus(HttpStatus.OK)
     public FlashcardDTO current(@PathVariable Long quizId, @RequestParam Long userId) {
         return flashcardMapper.toDTO(quizService.getCurrentQuestion(quizId, userId));
     }
 
     @GetMapping("/status/{id}")
+    @ResponseStatus(HttpStatus.OK)
     public QuizDTO status(@PathVariable Long id) {
         return quizMapper.convertEntityToDTO(quizService.getQuizStatus(id));
+    }
+
+    @DeleteMapping("/quit/{quizId}")
+    @ResponseStatus(HttpStatus.OK)
+    public void quitGame(@PathVariable Long quizId) {
+        quizService.cancelQuiz(quizId);
     }
 }

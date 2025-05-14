@@ -83,10 +83,11 @@ public class QuizService {
         inv.setQuiz(null);
         invitationRepository.save(inv);            // flush FK change
         invitationRepository.delete(inv);
+        invitationRepository.flush();
     }
 
 
-    private void ensureInvitable(User u) {
+    public void ensureInvitable(User u) {
         if (u.getStatus() == UserStatus.OFFLINE || u.getStatus() == UserStatus.PLAYING) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "User cannot be invited while OFFLINE or PLAYING.");
@@ -116,7 +117,7 @@ public class QuizService {
         }
         inv.setDecks(decks);
 
-        return invitationRepository.save(inv);
+        return invitationRepository.saveAndFlush(inv);
     }
 
     /** Factory: Invitation → Quiz. */
@@ -126,9 +127,30 @@ public class QuizService {
         Quiz quiz = quizMapper.fromInvitationToEntity(inv);   // mapper saves once
 
         inv.setQuiz(quiz);                // set FK
-        invitationRepository.save(inv);   // save owning side
+        invitationRepository.saveAndFlush(inv);   // save owning side
 //        quizRepository.flush();
         return quizRepository.saveAndFlush(quiz);  // already managed & saved
+    }
+
+    @Transactional
+    public void cancelInvitationBySender(Long invitationId) {
+        Invitation inv = getInvitationById(invitationId);
+
+        if (inv.getQuiz() != null) {
+            quizRepository.delete(inv.getQuiz());
+            quizRepository.flush();
+        }
+        User from = inv.getFromUser();
+        User to = inv.getFromUser();
+
+        invitationRepository.delete(inv);
+        invitationRepository.flush();
+
+        from.setStatus(UserStatus.ONLINE);
+        to.setStatus(UserStatus.ONLINE);
+        userRepository.save(from);
+        userRepository.save(to);
+        userRepository.flush();
     }
 
     @Transactional
@@ -147,16 +169,19 @@ public class QuizService {
 
         userRepository.save(inv.getFromUser());
         userRepository.save(inv.getToUser());
-        quizRepository.save(quiz);
-        invitationRepository.save(inv);
+        userRepository.flush();
+        quizRepository.saveAndFlush(quiz);
+        invitationRepository.saveAndFlush(inv);
     }
 
     public void rejectedInvitation(Long id) {
         Invitation inv = getInvitationById(id);
         if (inv.getQuiz() != null) {
             quizRepository.delete(inv.getQuiz());
+            quizRepository.flush();
         }
         invitationRepository.delete(inv);
+        invitationRepository.flush();
     }
 
     /** Return earliest accepted invite from sender and clean the rest. */
@@ -185,13 +210,15 @@ public class QuizService {
             // Delete the corresponding quiz if it exists
             if (lateInvitation.getQuiz() != null) {
                 quizRepository.delete(lateInvitation.getQuiz());
+                quizRepository.flush();
             }
             User toUser = lateInvitation.getToUser();
             toUser.setStatus(UserStatus.ONLINE);
-            userRepository.save(toUser);
+            userRepository.saveAndFlush(toUser);
 
             // Delete the late invitation
             invitationRepository.delete(lateInvitation);
+            invitationRepository.flush();
         }
         // Return the only accepted and kept invitation
         return earliestAccepted;
@@ -215,8 +242,9 @@ public class QuizService {
                 ? all.size() : numberOfQuestions;
 
         if (all.size() < n) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Not enough flashcards in the deck for " + n + " questions");
+            n= all.size();
+            // throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+            //         "Not enough flashcards in the deck for " + n + " questions");
         }
 
         Collections.shuffle(all);
@@ -231,7 +259,7 @@ public class QuizService {
         quiz.setSelectedFlashcards(selected);
 
         deck.setQuiz(quiz);
-        return quizRepository.save(quiz);
+        return quizRepository.saveAndFlush(quiz);
     }
 
     /** For multi-player: flip WAITING → IN_PROGRESS when second player joins. */
@@ -244,7 +272,7 @@ public class QuizService {
                 && q.getDecks().size() >= 2) {
             q.setQuizStatus(QuizStatus.IN_PROGRESS);
             q.setStartTime(new Date());
-            quizRepository.save(q);
+            quizRepository.saveAndFlush(q);
         }
         return q;
     }
@@ -280,6 +308,13 @@ public class QuizService {
             Long quizId, Long flashcardId, String answer, Long userId) {
 
         /* ───── validation ───── */
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (u.getStatus() != UserStatus.PLAYING) {
+            u.setStatus(UserStatus.PLAYING);
+            userRepository.saveAndFlush(u);
+        }
+
         Quiz q = quizRepository.findById(quizId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quiz not found"));
         if (q.getQuizStatus() != QuizStatus.IN_PROGRESS) {
@@ -322,7 +357,7 @@ public class QuizService {
                     s.setTotalQuestions(cards.size());
                 }
                 s.setCorrectQuestions(s.getCorrectQuestions() + 1);
-                scoreRepository.save(s);
+                scoreRepository.saveAndFlush(s);
             }
         }
 
@@ -348,29 +383,7 @@ public class QuizService {
                 (System.currentTimeMillis() - q.getStartTime().getTime() >= q.getTimeLimit() * 1000L);
 
         if (allFinished || timeExpired) {
-            q.setQuizStatus(QuizStatus.COMPLETED);
-            q.setEndTime(new Date());
-
-            /* record stats only for players who were still active */
-            QuizProgressStore.getProgressForQuiz(quizId).forEach(entry -> {
-                QuizProgressStore.ProgressState p = entry.getProgress();
-                if (!p.isFinished()) {
-                    long el = System.currentTimeMillis() - p.getStartTimeMillis();
-                    statisticsService.recordQuizStats(findUser(entry.getUserId()), q,
-                            p.getTotalCorrect(), p.getTotalAttempts(), el);
-                    p.setFinished(true);
-                }
-            });
-
-            /* reset player statuses (multi-player case) */
-            if (q.getInvitation() != null) {
-                User u1 = q.getInvitation().getFromUser();
-                User u2 = q.getInvitation().getToUser();
-                u1.setStatus(UserStatus.ONLINE);
-                u2.setStatus(UserStatus.ONLINE);
-                userRepository.saveAll(List.of(u1, u2));
-            }
-            quizRepository.save(q);
+            endOfQuiz(q);
         }
 
         /* ───── broadcast & response ───── */
@@ -386,8 +399,61 @@ public class QuizService {
         return dto;
     }
 
+    @Transactional
+    public void cancelQuiz(Long quizId) {
+        Quiz q = quizRepository.findById(quizId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quiz not found"));
+
+        endOfQuiz(q);
+    }
+
 
     /* helpers ------------------------------------------------------------ */
+
+    /* ───── end-of-quiz detection ───── */
+    private void endOfQuiz(Quiz q){
+        q.setQuizStatus(QuizStatus.COMPLETED);
+
+            q.setEndTime(new Date());
+
+            /* record stats only for players who were still active */
+            QuizProgressStore.getProgressForQuiz(q.getId()).forEach(entry -> {
+                QuizProgressStore.ProgressState p = entry.getProgress();
+                if (!p.isFinished()) {
+                    long el = System.currentTimeMillis() - p.getStartTimeMillis();
+                    statisticsService.recordQuizStats(findUser(entry.getUserId()), q,
+                            p.getTotalCorrect(), p.getTotalAttempts(), el);
+                    p.setFinished(true);
+                }
+            });
+
+            /* reset player statuses (multi-player case) */
+            if (q.getScores().size() == 2){
+                List<Score> scores = q.getScores();
+                User u1 = scores.get(0).getUser();
+                User u2 = scores.get(1).getUser();
+                u1.setStatus(UserStatus.ONLINE);
+                u2.setStatus(UserStatus.ONLINE);
+                userRepository.saveAll(List.of(u1, u2));
+                userRepository.flush();
+            }
+            if (q.getScores().size() == 1){
+                List<Score> scores = q.getScores();
+                User u1 = scores.get(0).getUser();
+                u1.setStatus(UserStatus.ONLINE);
+                userRepository.saveAndFlush(u1);
+            }
+            // if (q.getInvitation() != null) {
+            //     User u1 = q.getInvitation().getFromUser();
+            //     User u2 = q.getInvitation().getToUser();
+            //     u1.setStatus(UserStatus.ONLINE);
+            //     u2.setStatus(UserStatus.ONLINE);
+            //     userRepository.saveAll(List.of(u1, u2));
+            //     userRepository.flush();
+            // }
+            quizRepository.saveAndFlush(q);
+    }
+
 
     private boolean checkAllFinished(Quiz q) {
         List<QuizProgressStore.UserProgressEntry> ps = QuizProgressStore.getProgressForQuiz(q.getId());
