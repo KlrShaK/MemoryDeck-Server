@@ -111,6 +111,7 @@ public class UserService {
 
           // Update fields
           if (updatedUser.getUsername() != null) {
+              checkIfUserExists(updatedUser);
               existingUser.setUsername(updatedUser.getUsername());
           }
           if (updatedUser.getBirthday() != null) {
@@ -125,6 +126,19 @@ public class UserService {
           throw new ResponseStatusException(HttpStatus.NOT_FOUND,"User not found");
       }
   }
+
+  public void updatePassword(Long userId, String oldPassword, String newPassword) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+    if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Old password is incorrect");
+    }
+
+    user.setPassword(passwordEncoder.encode(newPassword));
+    userRepository.save(user);
+    userRepository.flush();
+}
 
   // implement function to get user by their ID
   public User getUserById(Long id) {
