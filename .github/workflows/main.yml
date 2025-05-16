@@ -48,9 +48,8 @@ jobs:
         id: deploy
         uses: google-github-actions/deploy-appengine@v2.1.0
         with:
-          project_id: sopra-fs25-group-40-server
+          project_id: "sopra-fs25-group-40-server"
           deliverables: app.yaml
-          credentials:  ${{ secrets.GCP_SERVICE_CREDENTIALS }}
           version: v1
           env_vars: |
             OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
