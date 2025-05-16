@@ -52,7 +52,7 @@ jobs:
           deliverables: app.yaml
           credentials:  ${{ secrets.GCP_SERVICE_CREDENTIALS }}
           version: v1
-          env_vars:
+          env_vars: |
             OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Test
