@@ -52,8 +52,8 @@ jobs:
           deliverables: app.yaml
           credentials:  ${{ secrets.GCP_SERVICE_CREDENTIALS }}
           version: v1
-        env_vars:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          env_vars:
+            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Test
         run: curl "${{ steps.deploy.outputs.url }}"
