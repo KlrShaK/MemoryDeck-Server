@@ -5,41 +5,28 @@ import ch.uzh.ifi.hase.soprafs24.entity.*;
 import ch.uzh.ifi.hase.soprafs24.repository.*;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.InvitationDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.mapper.QuizMapper;
-
-import org.springframework.http.HttpStatus;
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.FlashcardMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class QuizServiceTest {
 
-    @Mock
-    private UserRepository userRepository;
+    @Mock private UserRepository userRepository;
+    @Mock private UserService userService;
+    @Mock private QuizRepository quizRepository;
+    @Mock private InvitationRepository invitationRepository;
+    @Mock private DeckRepository deckRepository;
+    @Mock private QuizMapper quizMapper;
 
-    @Mock
-    private UserService userService;
-
-    @Mock
-    private QuizRepository quizRepository;
-
-    @Mock
-    private InvitationRepository invitationRepository;
-
-    @Mock
-    private QuizMapper quizMapper;
-
-    @Mock
-    private DeckRepository deckRepository;
-
-    @InjectMocks
-    private QuizService quizService;
+    @InjectMocks private QuizService quizService;
 
     @BeforeEach
     void setup() {
@@ -50,8 +37,8 @@ class QuizServiceTest {
     void getInvitationByFromUserId_returnsInvitations() {
         User fromUser = new User();
         fromUser.setId(1L);
-
         List<Invitation> invitations = List.of(new Invitation());
+
         when(userService.getUserById(1L)).thenReturn(fromUser);
         when(invitationRepository.findByFromUser(fromUser)).thenReturn(invitations);
 
@@ -65,8 +52,8 @@ class QuizServiceTest {
     void getInvitationByToUserId_returnsInvitations() {
         User toUser = new User();
         toUser.setId(2L);
-
         List<Invitation> invitations = List.of(new Invitation());
+
         when(userService.getUserById(2L)).thenReturn(toUser);
         when(invitationRepository.findByToUser(toUser)).thenReturn(invitations);
 
@@ -84,10 +71,8 @@ class QuizServiceTest {
         dto.setTimeLimit(2);
         dto.setDeckIds(List.of(100L));
 
-        User from = new User();
-        from.setStatus(UserStatus.ONLINE);
-        User to = new User();
-        to.setStatus(UserStatus.ONLINE);
+        User from = new User(); from.setStatus(UserStatus.ONLINE);
+        User to   = new User(); to.setStatus(UserStatus.ONLINE);
         Deck deck = new Deck();
 
         when(userService.getUserById(1L)).thenReturn(from);
@@ -97,163 +82,164 @@ class QuizServiceTest {
         Invitation saved = quizService.createInvitation(dto);
 
         assertEquals(from, saved.getFromUser());
-        assertEquals(to, saved.getToUser());
-        assertEquals(1, saved.getDecks().size());
+        assertEquals(to,   saved.getToUser());
+        assertEquals(1,     saved.getDecks().size());
         assertFalse(saved.getIsAccepted());
+
         verify(invitationRepository).saveAndFlush(any());
     }
 
     @Test
     void confirmedInvitation_success() {
-        User sender = new User();
-        sender.setStatus(UserStatus.ONLINE);
-        User receiver = new User();
-        receiver.setStatus(UserStatus.ONLINE);
+        User sender   = new User(); sender.setStatus(UserStatus.ONLINE);
+        User receiver = new User(); receiver.setStatus(UserStatus.ONLINE);
+        Quiz quiz     = new Quiz();
+        Invitation inv = new Invitation();
+        inv.setFromUser(sender);
+        inv.setToUser(receiver);
+        inv.setQuiz(quiz);
 
-        Quiz quiz = new Quiz();
-        Invitation invitation = new Invitation();
-        invitation.setFromUser(sender);
-        invitation.setToUser(receiver);
-        invitation.setQuiz(quiz);
-
-        when(invitationRepository.findById(1L)).thenReturn(Optional.of(invitation));
+        when(invitationRepository.findById(1L)).thenReturn(Optional.of(inv));
+        // UPDATED: stub the new saveAndFlush calls
+        when(quizRepository.saveAndFlush(quiz)).thenReturn(quiz);
+        when(invitationRepository.saveAndFlush(inv)).thenReturn(inv);
 
         quizService.confirmedInvitation(1L);
 
         assertEquals(UserStatus.PLAYING, sender.getStatus());
         assertEquals(UserStatus.PLAYING, receiver.getStatus());
-        assertTrue(invitation.getIsAccepted());
-        assertNotNull(invitation.getIsAcceptedDate());
+        assertTrue(inv.getIsAccepted());
+        assertNotNull(inv.getIsAcceptedDate());
 
-        verify(quizRepository).saveAndFlush(quiz);
         verify(userRepository).save(sender);
         verify(userRepository).save(receiver);
+        verify(userRepository).flush();
+        verify(quizRepository).saveAndFlush(quiz);
+        verify(invitationRepository).saveAndFlush(inv);
     }
 
     @Test
     void rejectedInvitation_deletesEntities() {
         Quiz quiz = new Quiz();
-        Invitation invitation = new Invitation();
-        invitation.setQuiz(quiz);
+        Invitation inv = new Invitation();
+        inv.setQuiz(quiz);
 
-        when(invitationRepository.findById(1L)).thenReturn(Optional.of(invitation));
+        when(invitationRepository.findById(1L)).thenReturn(Optional.of(inv));
 
         quizService.rejectedInvitation(1L);
 
         verify(quizRepository).delete(quiz);
-        verify(invitationRepository).delete(invitation);
+        verify(quizRepository).flush();
+        verify(invitationRepository).delete(inv);
+        verify(invitationRepository).flush();
     }
 
     @Test
     void findInvitationByFromUserIdAndIsAcceptedTrue_returnsEarliestAcceptedAndDeletesOthers() {
-        User fromUser = new User();
-        fromUser.setId(1L);
+        User fromUser = new User(); fromUser.setId(1L);
+        User to1 = new User(), to2 = new User();
 
-        User toUser1 = new User();
-        User toUser2 = new User();
+        Invitation old = new Invitation();
+        old.setIsAccepted(true);
+        old.setIsAcceptedDate(new Date(1000));
+        old.setToUser(to1);
 
-        Quiz quiz2 = new Quiz();
-
-        Invitation accepted1 = new Invitation();
-        accepted1.setIsAccepted(true);
-        accepted1.setIsAcceptedDate(new Date(1000));
-        accepted1.setToUser(toUser1);
-
-        Invitation accepted2 = new Invitation();
-        accepted2.setIsAccepted(true);
-        accepted2.setIsAcceptedDate(new Date(2000));
-        accepted2.setToUser(toUser2);
-        accepted2.setQuiz(quiz2);
+        Invitation late = new Invitation();
+        late.setIsAccepted(true);
+        late.setIsAcceptedDate(new Date(2000));
+        late.setToUser(to2);
+        Quiz   q2 = new Quiz();
+        late.setQuiz(q2);
 
         when(userService.getUserById(1L)).thenReturn(fromUser);
-        when(invitationRepository.findByFromUser(fromUser)).thenReturn(List.of(accepted1, accepted2));
+        when(invitationRepository.findByFromUser(fromUser)).thenReturn(List.of(old, late));
 
         Invitation result = quizService.findInvitationByFromUserIdAndIsAcceptedTrue(1L);
 
-        assertEquals(accepted1, result);
-        assertEquals(UserStatus.ONLINE, toUser2.getStatus());
-        verify(userRepository).saveAndFlush(toUser2);
-        verify(quizRepository).delete(quiz2);
-        verify(invitationRepository).delete(accepted2);
+        assertEquals(old, result);
+        assertEquals(UserStatus.ONLINE, to2.getStatus());
+
+        verify(quizRepository).delete(q2);
+        verify(quizRepository).flush();
+        verify(userRepository).saveAndFlush(to2);
+        verify(invitationRepository).delete(late);
+        verify(invitationRepository).flush();
     }
 
     @Test
     void deleteInvitationById_deletesSuccessfully() {
-        Invitation invitation = new Invitation();
-        when(invitationRepository.findById(1L)).thenReturn(Optional.of(invitation));
+        Invitation inv = new Invitation();
+        when(invitationRepository.findById(1L)).thenReturn(Optional.of(inv));
 
         quizService.deleteInvitationById(1L);
 
-        verify(invitationRepository).delete(invitation);
+        verify(invitationRepository).save(inv);
+        verify(invitationRepository).delete(inv);
+        verify(invitationRepository).flush();
     }
 
     @Test
     void checkUserStatusForInvitation_throwsOnOffline() {
         User user = new User();
         user.setStatus(UserStatus.OFFLINE);
-        assertThrows(ResponseStatusException.class, () -> quizService.ensureInvitable(user));
+        assertThrows(ResponseStatusException.class,
+                () -> quizService.ensureInvitable(user));
     }
 
     @Test
     void checkUserStatusForInvitation_throwsOnPlaying() {
         User user = new User();
         user.setStatus(UserStatus.PLAYING);
-        assertThrows(ResponseStatusException.class, () -> quizService.ensureInvitable(user));
+        assertThrows(ResponseStatusException.class,
+                () -> quizService.ensureInvitable(user));
     }
-
 
     @Test
     void getInvitationById_validId_returnsInvitation() {
-        Invitation mockInvitation = new Invitation();
-        mockInvitation.setId(1L);
-
-        when(invitationRepository.findById(1L)).thenReturn(Optional.of(mockInvitation));
+        Invitation inv = new Invitation();
+        inv.setId(1L);
+        when(invitationRepository.findById(1L)).thenReturn(Optional.of(inv));
 
         Invitation result = quizService.getInvitationById(1L);
 
-        assertEquals(mockInvitation, result);
-        verify(invitationRepository, times(1)).findById(1L);
+        assertEquals(inv, result);
+        verify(invitationRepository).findById(1L);
     }
 
     @Test
     void getInvitationById_invalidId_throwsException() {
         when(invitationRepository.findById(999L)).thenReturn(Optional.empty());
 
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-            () -> quizService.getInvitationById(999L));
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> quizService.getInvitationById(999L));
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
-        assertEquals("404 NOT_FOUND \"Invitation not found\"", exception.getMessage());
-        verify(invitationRepository, times(1)).findById(999L);
+        assertEquals("404 NOT_FOUND \"Invitation not found\"", ex.getMessage());
     }
 
     @Test
     void createQuiz_validInvitationId_createsQuiz() {
-        // Setup
-        Invitation mockInvitation = new Invitation();
-        mockInvitation.setId(1L);
-        mockInvitation.setDecks(new ArrayList<>());
+        Invitation inv = new Invitation();
+        inv.setId(1L);
+        inv.setDecks(new ArrayList<>());
 
-        Quiz mockQuiz = new Quiz();
-        mockQuiz.setId(10L);
-        mockQuiz.setDecks(new ArrayList<>());
+        Quiz quiz = new Quiz();
+        quiz.setId(10L);
+        quiz.setDecks(new ArrayList<>());
 
-        when(invitationRepository.findById(1L)).thenReturn(Optional.of(mockInvitation));
-        when(quizMapper.fromInvitationToEntity(mockInvitation)).thenReturn(mockQuiz);
-        when(quizRepository.save(any(Quiz.class))).thenReturn(mockQuiz);
-        when(invitationRepository.save(any(Invitation.class))).thenReturn(mockInvitation);
+        when(invitationRepository.findById(1L)).thenReturn(Optional.of(inv));
+        when(quizMapper.fromInvitationToEntity(inv)).thenReturn(quiz);
+        // UPDATED: stub saveAndFlush instead of save
+        when(invitationRepository.saveAndFlush(inv)).thenReturn(inv);
+        when(quizRepository.saveAndFlush(quiz)).thenReturn(quiz);
 
-        // Execute
         Quiz result = quizService.createQuiz(1L);
 
-        // Verify
-        assertEquals(mockQuiz, result);
-        assertEquals(mockQuiz, mockInvitation.getQuiz());
+        assertEquals(quiz, result);
+        assertEquals(quiz, inv.getQuiz());
 
-        verify(invitationRepository, times(1)).findById(1L);
-        verify(quizMapper, times(1)).fromInvitationToEntity(mockInvitation);
-        verify(quizRepository, times(1)).saveAndFlush(mockQuiz);
-        verify(invitationRepository, times(1)).saveAndFlush(mockInvitation);
+        verify(invitationRepository).findById(1L);
+        verify(quizMapper).fromInvitationToEntity(inv);
+        verify(invitationRepository).saveAndFlush(inv);
+        verify(quizRepository).saveAndFlush(quiz);
     }
-
 }

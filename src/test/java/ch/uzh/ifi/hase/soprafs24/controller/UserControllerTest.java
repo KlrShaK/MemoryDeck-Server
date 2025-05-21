@@ -2,224 +2,269 @@ package ch.uzh.ifi.hase.soprafs24.controller;
 
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.UserGetDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.UserLoginDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.UserPasswordUpdateDTO;
 import ch.uzh.ifi.hase.soprafs24.rest.dto.UserPostDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.DTOMapper;
 import ch.uzh.ifi.hase.soprafs24.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-import static org.mockito.BDDMockito.given;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/**
- * Covers all endpoints in UserController:
- *   GET /users/{id}, PUT /users/{id}, GET /users,
- *   POST /users, POST /login, DELETE /users/logout/{id}, POST /register
- */
 @WebMvcTest(UserController.class)
-public class UserControllerTest {
+class UserControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private ObjectMapper mapper;
+
     @MockBean
     private UserService userService;
 
-    private final ObjectMapper mapper = new ObjectMapper();
-
     // helper to serialize any DTO to JSON
-    private String toJson(Object o) throws Exception {
-        return mapper.writeValueAsString(o);
+    private String toJson(Object dto) throws Exception {
+        return mapper.writeValueAsString(dto);
     }
 
-    @Test
-    public void givenUsers_whenGetUsers_thenReturnJsonArray() throws Exception {
-        // given
-        User user = new User();
-        user.setId(1L);
-        user.setName("Firstname Lastname");
-        user.setUsername("firstname@lastname");
-        user.setStatus(UserStatus.OFFLINE);
+    @Nested @DisplayName("GET /users/{id}")
+    class GetUserById {
 
-        given(userService.getUsers()).willReturn(List.of(user));
+        @Test @DisplayName("200 when user exists")
+        void whenExists_returnsDto() throws Exception {
+            User u = new User();
+            u.setId(42L);
+            u.setName("Alice");
+            u.setUsername("alice");
+            u.setStatus(UserStatus.ONLINE);
+            u.setToken(UUID.randomUUID().toString());
+            u.setCreationDate(new Date());
 
-        // when / then
-        mockMvc.perform(get("/users")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$",       hasSize(1)))
-                .andExpect(jsonPath("$[0].id", is(1)))
-                .andExpect(jsonPath("$[0].name", is("Firstname Lastname")))
-                .andExpect(jsonPath("$[0].username", is("firstname@lastname")))
-                .andExpect(jsonPath("$[0].status", is("OFFLINE")));
+            given(userService.getUserById(42L)).willReturn(u);
+
+            mockMvc.perform(get("/users/{id}", 42L))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(42))
+                    .andExpect(jsonPath("$.name").value("Alice"))
+                    .andExpect(jsonPath("$.username").value("alice"))
+                    .andExpect(jsonPath("$.status").value("ONLINE"));
+        }
+
+        @Test @DisplayName("404 when not found")
+        void whenNotFound_responds404() throws Exception {
+            given(userService.getUserById(99L))
+                    .willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+            mockMvc.perform(get("/users/{id}", 99L))
+                    .andExpect(status().isNotFound());
+        }
     }
 
-    @Test
-    public void createUser_validInput_userCreated() throws Exception {
-        // given
-        UserPostDTO in = new UserPostDTO();
-        in.setName("Test User");
-        in.setUsername("testUsername");
+    @Nested @DisplayName("PUT /users/{id}")
+    class UpdateUserInfo {
 
-        User created = new User();
-        created.setId(1L);
-        created.setName(in.getName());
-        created.setUsername(in.getUsername());
-        created.setStatus(UserStatus.ONLINE);
+        @Test @DisplayName("204 on valid input")
+        void validInput_returnsNoContent() throws Exception {
+            UserPostDTO dto = new UserPostDTO();
+            dto.setName("Bob");
+            dto.setUsername("bob123");
 
-        given(userService.createUser(any(User.class))).willReturn(created);
+            mockMvc.perform(put("/users/{id}", 5L)
+                            .contentType("application/json")
+                            .content(toJson(dto)))
+                    .andExpect(status().isNoContent());
 
-        // when / then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(in)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id",       is(1)))
-                .andExpect(jsonPath("$.name",     is("Test User")))
-                .andExpect(jsonPath("$.username", is("testUsername")))
-                .andExpect(jsonPath("$.status",   is("ONLINE")));
+            then(userService).should().updateUser(eq(5L), any(User.class));
+        }
     }
 
-    @Test
-    public void getUserById_existingUser_returnsDto() throws Exception {
-        // given
-        User u = new User();
-        u.setId(42L);
-        u.setName("Jane Doe");
-        u.setUsername("jane");
-        u.setStatus(UserStatus.ONLINE);
+    @Nested @DisplayName("PUT /users/{id}/password")
+    class UpdatePassword {
 
-        given(userService.getUserById(42L)).willReturn(u);
+        @Test @DisplayName("204 on success")
+        void success_returnsNoContent() throws Exception {
+            UserPasswordUpdateDTO dto = new UserPasswordUpdateDTO();
+            dto.setOldPassword("old");
+            dto.setNewPassword("new!");
 
-        // when / then
-        mockMvc.perform(get("/users/42")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id",       is(42)))
-                .andExpect(jsonPath("$.name",     is("Jane Doe")))
-                .andExpect(jsonPath("$.username", is("jane")))
-                .andExpect(jsonPath("$.status",   is("ONLINE")));
+            mockMvc.perform(put("/users/{id}/password", 7L)
+                            .contentType("application/json")
+                            .content(toJson(dto)))
+                    .andExpect(status().isNoContent());
+
+            then(userService)
+                    .should()
+                    .updatePassword(7L, "old", "new!");
+        }
     }
 
-    @Test
-    public void getUserById_notFound_returns404() throws Exception {
-        given(userService.getUserById(99L))
-                .willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    @Nested @DisplayName("GET /users")
+    class GetAllUsers {
 
-        mockMvc.perform(get("/users/99")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+        @Test @DisplayName("200 returns list of DTOs")
+        void returnsList() throws Exception {
+            User u = new User();
+            u.setId(1L);
+            u.setName("C");
+            u.setUsername("cuser");
+            u.setStatus(UserStatus.OFFLINE);
+            u.setToken("t");
+            u.setCreationDate(new Date());
+
+            given(userService.getUsers()).willReturn(List.of(u));
+
+            mockMvc.perform(get("/users"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].id").value(1))
+                    .andExpect(jsonPath("$[0].name").value("C"))
+                    .andExpect(jsonPath("$[0].username").value("cuser"))
+                    .andExpect(jsonPath("$[0].status").value("OFFLINE"));
+        }
     }
 
-    @Test
-    public void updateUserInfo_validInput_returnsNoContent() throws Exception {
-        UserPostDTO update = new UserPostDTO();
-        update.setName("New Name");
-        update.setUsername("newuser");
+    @Nested @DisplayName("POST /users (createUser)")
+    class CreateUser {
 
-        // no need to stub userService.updateUser—void is fine
-        mockMvc.perform(put("/users/5")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(update)))
-                .andExpect(status().isNoContent());
+        @Test @DisplayName("201 returns created DTO")
+        void returnsCreatedDto() throws Exception {
+            UserPostDTO in = new UserPostDTO();
+            in.setName("D");
+            in.setUsername("duser");
 
-        Mockito.verify(userService).updateUser(eq(5L), any(User.class));
+            User created = new User();
+            created.setId(2L);
+            created.setName("D");
+            created.setUsername("duser");
+            created.setStatus(UserStatus.ONLINE);
+            created.setToken("tok");
+            created.setCreationDate(new Date());
+
+            given(userService.createUser(any(User.class))).willReturn(created);
+
+            mockMvc.perform(post("/users")
+                            .contentType("application/json")
+                            .content(toJson(in)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.id").value(2))
+                    .andExpect(jsonPath("$.name").value("D"))
+                    .andExpect(jsonPath("$.username").value("duser"))
+                    .andExpect(jsonPath("$.status").value("ONLINE"));
+        }
     }
 
-    @Test
-    public void loginUser_validCredentials_returnsDto() throws Exception {
-        UserLoginDTO login = new UserLoginDTO();
-        login.setUsername("foo");
-        login.setPassword("bar");
+    @Nested @DisplayName("POST /login")
+    class LoginUser {
 
-        User u = new User();
-        u.setId(7L);
-        u.setName("Foo Bar");
-        u.setUsername("foo");
-        u.setStatus(UserStatus.ONLINE);
+        @Test @DisplayName("200 on valid credentials")
+        void validCredentials_returnsDto() throws Exception {
+            UserLoginDTO login = new UserLoginDTO();
+            login.setUsername("zz");
+            login.setPassword("pp");
 
-        given(userService.loginUser("foo", "bar")).willReturn(u);
+            User u = new User();
+            u.setId(3L);
+            u.setName("Z Z");
+            u.setUsername("zz");
+            u.setStatus(UserStatus.ONLINE);
+            u.setToken("tok");
+            u.setCreationDate(new Date());
 
-        mockMvc.perform(post("/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(login)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id",       is(7)))
-                .andExpect(jsonPath("$.name",     is("Foo Bar")))
-                .andExpect(jsonPath("$.username", is("foo")))
-                .andExpect(jsonPath("$.status",   is("ONLINE")));
+            given(userService.loginUser("zz","pp")).willReturn(u);
+
+            mockMvc.perform(post("/login")
+                            .contentType("application/json")
+                            .content(toJson(login)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(3))
+                    .andExpect(jsonPath("$.username").value("zz"))
+                    .andExpect(jsonPath("$.status").value("ONLINE"));
+        }
+
+        @Test @DisplayName("401 on bad credentials")
+        void badCredentials_returnsUnauthorized() throws Exception {
+            UserLoginDTO login = new UserLoginDTO();
+            login.setUsername("x");
+            login.setPassword("y");
+
+            given(userService.loginUser("x","y"))
+                    .willThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid"));
+
+            mockMvc.perform(post("/login")
+                            .contentType("application/json")
+                            .content(toJson(login)))
+                    .andExpect(status().isUnauthorized());
+        }
     }
 
-    @Test
-    public void loginUser_badCredentials_returnsUnauthorized() throws Exception {
-        UserLoginDTO login = new UserLoginDTO();
-        login.setUsername("x");
-        login.setPassword("y");
+    @Nested @DisplayName("DELETE /users/logout/{id}")
+    class LogoutUser {
 
-        given(userService.loginUser("x", "y"))
-                .willThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Bad credentials"));
+        @Test @DisplayName("200 returns updated DTO")
+        void returnsDto() throws Exception {
+            User u = new User();
+            u.setId(8L);
+            u.setName("Lo");
+            u.setUsername("lo");
+            u.setStatus(UserStatus.OFFLINE);
+            u.setToken(null);
+            u.setCreationDate(new Date());
 
-        mockMvc.perform(post("/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(login)))
-                .andExpect(status().isUnauthorized());
+            given(userService.logoutUser(8L)).willReturn(u);
+
+            mockMvc.perform(delete("/users/logout/{id}", 8L))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(8))
+                    .andExpect(jsonPath("$.username").value("lo"))
+                    .andExpect(jsonPath("$.status").value("OFFLINE"));
+        }
     }
 
-    @Test
-    public void logoutById_returnsDto() throws Exception {
-        User u = new User();
-        u.setId(13L);
-        u.setName("Log Out");
-        u.setUsername("logout");
-        u.setStatus(UserStatus.OFFLINE);
+    @Nested @DisplayName("POST /register")
+    class RegisterUser {
 
-        given(userService.logoutUser(13L)).willReturn(u);
+        @Test @DisplayName("201 same as createUser")
+        void worksLikeCreate() throws Exception {
+            UserPostDTO in = new UserPostDTO();
+            in.setName("R");
+            in.setUsername("ruser");
 
-        mockMvc.perform(delete("/users/logout/13")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id",       is(13)))
-                .andExpect(jsonPath("$.name",     is("Log Out")))
-                .andExpect(jsonPath("$.username", is("logout")))
-                .andExpect(jsonPath("$.status",   is("OFFLINE")));
-    }
+            User created = new User();
+            created.setId(9L);
+            created.setName("R");
+            created.setUsername("ruser");
+            created.setStatus(UserStatus.ONLINE);
+            created.setToken("tk");
+            created.setCreationDate(new Date());
 
-    @Test
-    public void registerUser_validInput_userRegistered() throws Exception {
-        UserPostDTO in = new UserPostDTO();
-        in.setName("Newbie");
-        in.setUsername("newuser");
+            given(userService.createUser(any(User.class))).willReturn(created);
 
-        User created = new User();
-        created.setId(99L);
-        created.setName("Newbie");
-        created.setUsername("newuser");
-        created.setStatus(UserStatus.ONLINE);
-
-        // register and createUser both call createUser(...) under the hood
-        given(userService.createUser(any(User.class))).willReturn(created);
-
-        mockMvc.perform(post("/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(in)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id",       is(99)))
-                .andExpect(jsonPath("$.name",     is("Newbie")))
-                .andExpect(jsonPath("$.username", is("newuser")))
-                .andExpect(jsonPath("$.status",   is("ONLINE")));
+            mockMvc.perform(post("/register")
+                            .contentType("application/json")
+                            .content(toJson(in)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.id").value(9))
+                    .andExpect(jsonPath("$.username").value("ruser"))
+                    .andExpect(jsonPath("$.status").value("ONLINE"));
+        }
     }
 }

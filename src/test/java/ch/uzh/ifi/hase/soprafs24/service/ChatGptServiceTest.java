@@ -62,7 +62,7 @@ public class ChatGptServiceTest {
 
     @Test
     public void extractGeneratedText_missingFlashcards_throwsException() {
-        // Content JSON without "flashcards" key
+        // Content JSON without the "flashcards" key
         String invalidContent = "{ \"foo\": [] }";
         String wrapper = "{\"output\":[{\"content\":[{\"text\":\"" + invalidContent.replace("\"", "\\\"") + "\"}]}]}";
 

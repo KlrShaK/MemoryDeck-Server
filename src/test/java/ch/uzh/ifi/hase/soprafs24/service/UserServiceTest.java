@@ -1,19 +1,20 @@
 package ch.uzh.ifi.hase.soprafs24.service;
 
-import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
+import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-public class UserServiceTest {
+class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
@@ -34,7 +35,7 @@ public class UserServiceTest {
         when(userRepository.findAll()).thenReturn(users);
 
         List<User> result = userService.getUsers();
-        assertSame(users, result);
+        assertSame(users, result);  // returns exactly what repository returned :contentReference[oaicite:0]{index=0}
     }
 
     // ---------- createUser() ----------
@@ -44,22 +45,18 @@ public class UserServiceTest {
         User input = new User();
         input.setUsername("alice");
 
-        // no existing user
         when(userRepository.findByUsername("alice")).thenReturn(null);
-        // echo back what was passed, so we can inspect it
         when(userRepository.save(any(User.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
         User created = userService.createUser(input);
 
-        assertNotNull(created.getToken(), "token should be generated");
+        assertNotNull(created.getToken(),      "token should be generated");
         assertEquals(UserStatus.ONLINE, created.getStatus());
-        assertNotNull(created.getCreationDate(), "creationDate should be set");
-        // password was null, so remains null
-        assertNull(created.getPassword());
-
+        assertNotNull(created.getCreationDate(),"creationDate should be set");
+        assertNull(created.getPassword(),     "since no password was supplied");
         verify(userRepository).save(created);
-        verify(userRepository).flush();
+        verify(userRepository).flush();       // flush() is called after save :contentReference[oaicite:1]{index=1}
     }
 
     @Test
@@ -74,12 +71,13 @@ public class UserServiceTest {
 
         User created = userService.createUser(input);
 
-        assertNotNull(created.getPassword(), "password should be encoded");
+        assertNotNull(created.getPassword(), "password should be set");
         assertNotEquals("secret", created.getPassword());
-        // verify BCrypt matches
-        assertTrue(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
-                .matches("secret", created.getPassword()));
-
+        assertTrue(
+                new BCryptPasswordEncoder()
+                        .matches("secret", created.getPassword()),
+                "BCrypt should match the raw password"
+        );
         verify(userRepository).save(created);
         verify(userRepository).flush();
     }
@@ -116,14 +114,14 @@ public class UserServiceTest {
         input.setUsername("charlie");
 
         when(userRepository.findByUsername("charlie"))
-                .thenReturn(new User()); // simulate existing user
+                .thenReturn(new User());  // simulate existing user
 
         ResponseStatusException ex = assertThrows(
                 ResponseStatusException.class,
                 () -> userService.createUser(input)
         );
         assertEquals(409, ex.getStatus().value());
-        assertTrue(ex.getReason().contains("already taken"));
+        assertTrue(ex.getReason().contains("Username 'charlie' is already taken"));
     }
 
     // ---------- updateUser() ----------
@@ -132,22 +130,25 @@ public class UserServiceTest {
     void updateUser_existing_updatesFields() {
         User existing = new User();
         existing.setId(100L);
-        existing.setUsername("oldName");
+        existing.setUsername("old");
         existing.setBirthday(new Date(0));
 
         when(userRepository.findById(100L))
                 .thenReturn(Optional.of(existing));
+        // for the username‐uniqueness check
+        when(userRepository.findByUsername("new"))
+                .thenReturn(null);
 
         User updates = new User();
-        updates.setUsername("newName");
+        updates.setUsername("new");
         Date later = new Date(123456789);
         updates.setBirthday(later);
 
         userService.updateUser(100L, updates);
 
-        assertEquals("newName", existing.getUsername());
+        assertEquals("new", existing.getUsername());
         assertEquals(later, existing.getBirthday());
-        verify(userRepository).save(existing);
+        verify(userRepository).save(existing);  // no flush on updateUser :contentReference[oaicite:2]{index=2}
     }
 
     @Test
@@ -257,13 +258,13 @@ public class UserServiceTest {
                 () -> userService.loginUser("nope", "pw")
         );
         assertEquals(401, ex.getStatus().value());
+        assertTrue(ex.getReason().contains("No user registered with username 'nope'"));
     }
 
     @Test
     void loginUser_invalidPassword_throwsUnauthorized() {
         String raw = "pass";
-        String encoded = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
-                .encode("other");
+        String encoded = new BCryptPasswordEncoder().encode("other");
         User u = new User();
         u.setUsername("user");
         u.setPassword(encoded);
@@ -282,8 +283,7 @@ public class UserServiceTest {
     @Test
     void loginUser_success_generatesTokenAndSaves() {
         String raw = "mypw";
-        String encoded = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
-                .encode(raw);
+        String encoded = new BCryptPasswordEncoder().encode(raw);
         User u = new User();
         u.setUsername("u");
         u.setPassword(encoded);
@@ -291,9 +291,8 @@ public class UserServiceTest {
 
         when(userRepository.findByUsername("u"))
                 .thenReturn(u);
-
-        // simulate save returning the same user
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.save(any(User.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
 
         User loggedIn = userService.loginUser("u", raw);
 
@@ -314,7 +313,6 @@ public class UserServiceTest {
 
         when(userRepository.findById(55L))
                 .thenReturn(Optional.of(u));
-        // no need to stub save/flush
 
         User loggedOut = userService.logoutUser(55L);
 

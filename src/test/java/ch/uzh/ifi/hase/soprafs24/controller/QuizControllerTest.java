@@ -1,260 +1,291 @@
 package ch.uzh.ifi.hase.soprafs24.controller;
 
-import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
-import ch.uzh.ifi.hase.soprafs24.entity.Invitation;
-import ch.uzh.ifi.hase.soprafs24.entity.Quiz;
-import ch.uzh.ifi.hase.soprafs24.entity.User;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.InvitationDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.dto.QuizDTO;
-import ch.uzh.ifi.hase.soprafs24.rest.mapper.FlashcardMapper;
-import ch.uzh.ifi.hase.soprafs24.rest.mapper.InvitationMapper;
-import ch.uzh.ifi.hase.soprafs24.rest.mapper.QuizMapper;
+import ch.uzh.ifi.hase.soprafs24.entity.*;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.*;
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.*;
 import ch.uzh.ifi.hase.soprafs24.service.QuizService;
-
-import org.junit.jupiter.api.BeforeEach;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Date;
+import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import java.util.Arrays;
-import java.util.List;
-
 @WebMvcTest(QuizController.class)
 class QuizControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper mapper;
 
-    @MockBean
-    private QuizService quizService;
-    
-    @MockBean
-    private QuizMapper quizMapper;
+    @MockBean private QuizService       quizService;
+    @MockBean private QuizMapper        quizMapper;
+    @MockBean private InvitationMapper  invitationMapper;
+    @MockBean private FlashcardMapper   flashcardMapper;
 
-    @MockBean
-    private FlashcardMapper flashcardMapper;
-    
-    @MockBean
-    private InvitationMapper invitationMapper;
+    // ───────────── Invitation endpoints ─────────────
+    @Nested
+    class InvitationEndpoints {
 
-    @InjectMocks
-    private QuizController quizController;
+        @Test
+        void sendQuizInvitation_returnsQuizDTO() throws Exception {
+            InvitationDTO dto = new InvitationDTO();
+            dto.setFromUserId(1L);
+            dto.setToUserId(2L);
+            dto.setTimeLimit(5);
 
-    private User fromUser;
-    private User toUser;
+            Invitation inv = new Invitation();
+            inv.setId(11L);
+            Quiz quiz = new Quiz();
+            quiz.setId(22L);
+            QuizDTO out = new QuizDTO();
+            out.setId(22L);
 
-    @BeforeEach
-    public void setup() {
-        // Create a test user
-        fromUser = new User();
-        fromUser.setId(1L);
-        fromUser.setUsername("fromUser");
-        fromUser.setPassword("testPassword");
-        fromUser.setCreationDate(new Date());
-        fromUser.setStatus(UserStatus.ONLINE);
+            when(quizService.createInvitation(any())).thenReturn(inv);
+            when(quizService.createQuiz(11L)).thenReturn(quiz);
+            when(quizMapper.convertEntityToDTO(quiz)).thenReturn(out);
 
-        toUser = new User();
-        toUser.setId(2L);
-        toUser.setUsername("toUser");
-        toUser.setPassword("testPassword");
-        toUser.setCreationDate(new Date());
-        toUser.setStatus(UserStatus.ONLINE);
+            mockMvc.perform(post("/quiz/invitation")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(dto)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(22));
 
+            verify(quizService).createInvitation(any());
+            verify(quizService).createQuiz(11L);
+        }
+
+        @Test
+        void getQuizInvitation_returnsDTO() throws Exception {
+            Invitation inv = new Invitation();
+            inv.setId(33L);
+            InvitationDTO out = new InvitationDTO();
+            out.setId(33L);
+
+            when(quizService.getInvitationById(33L)).thenReturn(inv);
+            when(invitationMapper.toDTO(inv)).thenReturn(out);
+
+            mockMvc.perform(get("/quiz/invitation/{id}", 33L))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(33));
+        }
+
+        @Test
+        void getInvitesBySender_returnsList() throws Exception {
+            Invitation inv = new Invitation();
+            inv.setId(44L);
+            InvitationDTO dto = new InvitationDTO();
+            dto.setId(44L);
+
+            when(quizService.getInvitationByFromUserId(5L))
+                    .thenReturn(List.of(inv));
+            when(invitationMapper.toDTOList(anyList()))
+                    .thenReturn(List.of(dto));
+
+            mockMvc.perform(get("/quiz/invitation/senders")
+                            .param("fromUserId","5"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].id").value(44));
+        }
+
+        @Test
+        void senderCancelled_callsService() throws Exception {
+            mockMvc.perform(delete("/quiz/invitation/senders/cancel")
+                            .param("invitationId","66"))
+                    .andExpect(status().isOk());
+            verify(quizService).cancelInvitationBySender(66L);
+        }
+
+        @Test
+        void getInvitesByReceiver_returnsList() throws Exception {
+            Invitation inv = new Invitation(); inv.setId(77L);
+            InvitationDTO dto = new InvitationDTO(); dto.setId(77L);
+
+            when(quizService.getInvitationByToUserId(6L))
+                    .thenReturn(List.of(inv));
+            when(invitationMapper.toDTOList(anyList()))
+                    .thenReturn(List.of(dto));
+
+            mockMvc.perform(get("/quiz/invitation/receivers")
+                            .param("toUserId","6"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].id").value(77));
+        }
+
+        @Test
+        void confirmInvite_callsService() throws Exception {
+            mockMvc.perform(get("/quiz/response/confirmation")
+                            .param("invitationId","88"))
+                    .andExpect(status().isOk());
+            verify(quizService).confirmedInvitation(88L);
+        }
+
+        @Test
+        void rejectInvite_callsService() throws Exception {
+            mockMvc.perform(delete("/quiz/response/rejection")
+                            .param("invitationId","99"))
+                    .andExpect(status().isOk());
+            verify(quizService).rejectedInvitation(99L);
+        }
+
+        @Test
+        void acceptedInvite_whenPresent_returnsDTO() throws Exception {
+            Invitation inv = new Invitation(); inv.setId(123L);
+            InvitationDTO dto = new InvitationDTO(); dto.setId(123L);
+
+            when(quizService.findInvitationByFromUserIdAndIsAcceptedTrue(7L))
+                    .thenReturn(inv);
+            when(invitationMapper.toDTO(inv)).thenReturn(dto);
+
+            mockMvc.perform(get("/quiz/invitation/accepted")
+                            .param("fromUserId","7"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(123));
+        }
+
+        @Test
+        void acceptedInvite_whenNull_returnsEmptyBody() throws Exception {
+            when(quizService.findInvitationByFromUserIdAndIsAcceptedTrue(8L))
+                    .thenReturn(null);
+
+            mockMvc.perform(get("/quiz/invitation/accepted")
+                            .param("fromUserId","8"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(""));
+        }
+
+        @Test
+        void deleteInvitation_callsService() throws Exception {
+            mockMvc.perform(delete("/quiz/invitation/delete/{id}", 55L))
+                    .andExpect(status().isOk());
+            verify(quizService).deleteInvitationById(55L);
+        }
     }
 
-    @Test
-    void testSendQuizInvitation() throws Exception {
-        // Arrange
-        InvitationDTO invitationDTO = new InvitationDTO();
-        invitationDTO.setFromUserId(1L);
-        invitationDTO.setToUserId(2L);
-        invitationDTO.setTimeLimit(5);
+    // ───────────── Quiz endpoints ─────────────
+    @Nested
+    class QuizFlowEndpoints {
 
-        QuizDTO quizDTO = new QuizDTO();
-        quizDTO.setId(1L);
+        @Test
+        void startQuiz_requiresDeckId() throws Exception {
+            QuizStartRequestDTO req = new QuizStartRequestDTO();
+            // leave deckId null
+            mockMvc.perform(post("/quiz/start")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(req)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(result -> {
+                        Throwable ex = result.getResolvedException();
+                        assertThat(ex).isInstanceOf(ResponseStatusException.class);
+                        assertThat(((ResponseStatusException)ex).getReason())
+                                .contains("Deck ID is required");
+                    });
+        }
 
-        Invitation invitation = new Invitation();
-        invitation.setId(1L);
+        @Test
+        void startQuiz_success_returnsQuizDTO() throws Exception {
+            QuizStartRequestDTO req = new QuizStartRequestDTO();
+            req.setDeckId(5L);
+            req.setNumberOfQuestions(2);
+            req.setTimeLimit(60);
+            req.setIsMultiple(true);
 
-        Quiz quiz = new Quiz();
-        quiz.setId(1L);
+            Quiz quiz = new Quiz(); quiz.setId(9L);
+            QuizDTO dto = new QuizDTO(); dto.setId(9L);
 
-        when(quizService.createInvitation(any(InvitationDTO.class))).thenReturn(invitation);
-        when(quizService.createQuiz(1L)).thenReturn(quiz);
-        when(quizMapper.toDTO(any(Quiz.class))).thenReturn(quizDTO);
+            when(quizService.startQuiz(5L,2,60,true)).thenReturn(quiz);
+            when(quizMapper.convertEntityToDTO(quiz)).thenReturn(dto);
 
-        // Act & Assert
-        mockMvc.perform(post("/quiz/invitation")
-                .contentType("application/json")
-                .content("{\"fromUserId\": 1, \"toUserId\": 2, \"timeLimit\": 5}")
-        )
-                .andExpect(status().isOk());
+            mockMvc.perform(post("/quiz/start")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(req)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.id").value(9));
+        }
 
-        verify(quizService).createInvitation(any(InvitationDTO.class));
-        verify(quizService).createQuiz(anyLong());
+        @Test
+        void answer_missingFields_throwsBadRequest() throws Exception {
+            QuizAnswerRequestDTO req = new QuizAnswerRequestDTO();
+            req.setQuizId(1L);
+            // missing flashcardId and userId
+            mockMvc.perform(post("/quiz/answer")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(req)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(result -> {
+                        Throwable ex = result.getResolvedException();
+                        assertThat(ex).isInstanceOf(ResponseStatusException.class);
+                        assertThat(((ResponseStatusException)ex).getReason())
+                                .contains("Missing required fields");
+                    });
+        }
+
+        @Test
+        void answer_success_returnsResponseDTO() throws Exception {
+            QuizAnswerRequestDTO req = new QuizAnswerRequestDTO();
+            req.setQuizId(1L);
+            req.setFlashcardId(2L);
+            req.setUserId(3L);
+            req.setSelectedAnswer("X");
+
+            QuizAnswerResponseDTO out = new QuizAnswerResponseDTO();
+            out.setWasCorrect(true);
+            out.setFinished(false);
+
+            when(quizService.processAnswerWithFeedback(1L,2L,"X",3L))
+                    .thenReturn(out);
+
+            mockMvc.perform(post("/quiz/answer")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(req)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.wasCorrect").value(true))
+                    .andExpect(jsonPath("$.finished").value(false));
+        }
+
+        @Test
+        void currentQuestion_returnsFlashcardDTO() throws Exception {
+            Flashcard fc = new Flashcard(); fc.setId(15L);
+            FlashcardDTO dto = new FlashcardDTO(); dto.setId(15L);
+
+            when(quizService.getCurrentQuestion(7L,8L)).thenReturn(fc);
+            when(flashcardMapper.toDTO(fc)).thenReturn(dto);
+
+            mockMvc.perform(get("/quiz/{quizId}/currentQuestion",7L)
+                            .param("userId","8"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(15));
+        }
+
+        @Test
+        void status_returnsQuizDTO() throws Exception {
+            Quiz quiz = new Quiz(); quiz.setId(20L);
+            QuizDTO dto = new QuizDTO(); dto.setId(20L);
+
+            when(quizService.getQuizStatus(20L)).thenReturn(quiz);
+            when(quizMapper.convertEntityToDTO(quiz)).thenReturn(dto);
+
+            mockMvc.perform(get("/quiz/status/{id}",20L))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(20));
+        }
+
+        @Test
+        void quitGame_callsService() throws Exception {
+            mockMvc.perform(delete("/quiz/quit/{quizId}",77L))
+                    .andExpect(status().isOk());
+            verify(quizService).cancelQuiz(77L);
+        }
     }
-
-    @Test
-    void testGetQuizInvitation() throws Exception {
-        // Arrange
-        Long invitationId = 1L;
-        Invitation invitation = new Invitation();
-        invitation.setId(invitationId);
-
-        InvitationDTO invitationDTO = new InvitationDTO();
-        invitationDTO.setId(invitationId);
-
-        when(quizService.getInvitationById(invitationId)).thenReturn(invitation);
-        when(invitationMapper.toDTO(any(Invitation.class))).thenReturn(invitationDTO);
-
-        // Act & Assert
-        mockMvc.perform(get("/quiz/invitation/{invitationId}", invitationId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(invitationId));
-
-        verify(quizService).getInvitationById(invitationId);
-    }
-
-
-    @Test
-    void testConfirmedQuizInvitation() throws Exception {
-        // Arrange
-        Long invitationId = 1L;
-
-        // Act & Assert
-        mockMvc.perform(get("/quiz/response/confirmation")
-                .param("invitationId", invitationId.toString())
-        )
-                .andExpect(status().isOk());
-
-        verify(quizService).confirmedInvitation(invitationId);
-    }
-
-    @Test
-    void testRejectedQuizInvitation() throws Exception {
-        // Arrange
-        Long invitationId = 1L;
-
-        // Act & Assert
-        mockMvc.perform(delete("/quiz/response/rejection")
-                .param("invitationId", invitationId.toString())
-        )
-                .andExpect(status().isOk());
-
-        verify(quizService).rejectedInvitation(invitationId);
-    }
-
-    @Test
-    void testDeleteQuizInvitation() throws Exception {
-        // Arrange
-        Long invitationId = 1L;
-
-        // Act & Assert
-        mockMvc.perform(delete("/quiz/invitation/delete/{invitationId}", invitationId))
-                .andExpect(status().isOk());
-
-        verify(quizService).deleteInvitationById(invitationId);
-    }
-
-    @Test
-    void testGetQuizInvitationsBySender() throws Exception {
-        // Arrange
-        Invitation invitation = new Invitation();
-        invitation.setId(1L);
-        invitation.setFromUser(fromUser);
-
-        InvitationDTO invitationDTO = new InvitationDTO();
-        invitationDTO.setId(1L);
-        invitationDTO.setFromUserId(fromUser.getId());
-
-        List<Invitation> invitations = Arrays.asList(invitation);
-        List<InvitationDTO> invitationDTOs = Arrays.asList(invitationDTO);
-
-        when(quizService.getInvitationByFromUserId(fromUser.getId())).thenReturn(invitations);
-        when(invitationMapper.toDTOList(invitations)).thenReturn(invitationDTOs);
-
-        // Act & Assert
-        mockMvc.perform(get("/quiz/invitation/senders")
-                .param("fromUserId", String.valueOf(fromUser.getId()))
-                .contentType("application/json"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(1L))
-                .andExpect(jsonPath("$[0].fromUserId").value(fromUser.getId()));
-
-        verify(quizService).getInvitationByFromUserId(fromUser.getId());
-        verify(invitationMapper).toDTOList(invitations);
-    }
-
-
-    @Test
-    void testGetQuizInvitationsByReceiver() throws Exception {
-        // Arrange
-        Invitation invitation = new Invitation();
-        invitation.setId(1L);
-        invitation.setToUser(toUser);
-
-        InvitationDTO invitationDTO = new InvitationDTO();
-        invitationDTO.setId(1L);
-        invitationDTO.setToUserId(toUser.getId());
-
-        List<Invitation> invitations = Arrays.asList(invitation);
-        List<InvitationDTO> invitationDTOs = Arrays.asList(invitationDTO);
-
-        when(quizService.getInvitationByToUserId(toUser.getId())).thenReturn(invitations);
-        when(invitationMapper.toDTOList(invitations)).thenReturn(invitationDTOs);
-
-        // Act & Assert
-        mockMvc.perform(get("/quiz/invitation/receivers")
-                .param("toUserId", String.valueOf(toUser.getId()))
-                .contentType("application/json"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(1L))
-                .andExpect(jsonPath("$[0].toUserId").value(toUser.getId()));
-
-        verify(quizService).getInvitationByToUserId(toUser.getId());
-        verify(invitationMapper).toDTOList(invitations);
-    }
-
-
-
-    @Test
-    void testGetAcceptedQuizInvitationsForSender() throws Exception {
-        // Arrange
-        Invitation invitation = new Invitation();
-        invitation.setId(1L);
-        invitation.setFromUser(fromUser);
-        invitation.setIsAccepted(true);
-    
-        InvitationDTO invitationDTO = new InvitationDTO();
-        invitationDTO.setId(1L);
-        invitationDTO.setFromUserId(fromUser.getId());
-        invitationDTO.setIsAccepted(true);
-    
-        when(quizService.findInvitationByFromUserIdAndIsAcceptedTrue(fromUser.getId())).thenReturn(invitation);
-        when(invitationMapper.toDTO(invitation)).thenReturn(invitationDTO);
-    
-        // Act & Assert
-        mockMvc.perform(get("/quiz/invitation/accepted")
-                .param("fromUserId", String.valueOf(fromUser.getId()))
-                .contentType("application/json"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1L))
-                .andExpect(jsonPath("$.fromUserId").value(fromUser.getId()))
-                .andExpect(jsonPath("$.isAccepted").value(true));
-    
-        verify(quizService).findInvitationByFromUserIdAndIsAcceptedTrue(fromUser.getId());
-        verify(invitationMapper).toDTO(invitation);
-    }
-    
 }

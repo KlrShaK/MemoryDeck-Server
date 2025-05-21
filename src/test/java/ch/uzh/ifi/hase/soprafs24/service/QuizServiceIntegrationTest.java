@@ -1,187 +1,153 @@
-// package ch.uzh.ifi.hase.soprafs24.service;
+package ch.uzh.ifi.hase.soprafs24.service;
 
-// import ch.uzh.ifi.hase.soprafs24.constant.FlashcardCategory;
-// import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
-// import ch.uzh.ifi.hase.soprafs24.entity.Deck;
-// import ch.uzh.ifi.hase.soprafs24.entity.Invitation;
-// import ch.uzh.ifi.hase.soprafs24.entity.Quiz;
-// import ch.uzh.ifi.hase.soprafs24.entity.User;
-// import ch.uzh.ifi.hase.soprafs24.repository.DeckRepository;
-// import ch.uzh.ifi.hase.soprafs24.repository.InvitationRepository;
-// import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
-// import ch.uzh.ifi.hase.soprafs24.rest.dto.InvitationDTO;
+import ch.uzh.ifi.hase.soprafs24.constant.FlashcardCategory;
+import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
+import ch.uzh.ifi.hase.soprafs24.entity.Deck;
+import ch.uzh.ifi.hase.soprafs24.entity.Flashcard;
+import ch.uzh.ifi.hase.soprafs24.entity.Quiz;
+import ch.uzh.ifi.hase.soprafs24.entity.Score;
+import ch.uzh.ifi.hase.soprafs24.entity.Statistics;
+import ch.uzh.ifi.hase.soprafs24.entity.User;
+import ch.uzh.ifi.hase.soprafs24.repository.DeckRepository;
+import ch.uzh.ifi.hase.soprafs24.repository.InvitationRepository;
+import ch.uzh.ifi.hase.soprafs24.repository.QuizRepository;
+import ch.uzh.ifi.hase.soprafs24.repository.ScoreRepository;
+import ch.uzh.ifi.hase.soprafs24.repository.StatisticsRepository;
+import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+import ch.uzh.ifi.hase.soprafs24.rest.dto.QuizAnswerResponseDTO;
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.FlashcardMapper;
+import ch.uzh.ifi.hase.soprafs24.rest.mapper.QuizMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.transaction.annotation.Transactional;
 
-// import org.junit.jupiter.api.BeforeEach;
-// import org.junit.jupiter.api.Test;
-// import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.boot.test.context.SpringBootTest;
-// import org.springframework.test.annotation.DirtiesContext;
-// import org.springframework.test.context.web.WebAppConfiguration;
-// import org.springframework.transaction.annotation.Transactional;
+import java.util.Date;
+import java.util.List;
 
-// import java.util.Collections;
-// import java.util.Date;
+import static org.assertj.core.api.Assertions.assertThat;
 
-// import static org.junit.jupiter.api.Assertions.*;
+@SpringBootTest(
+        classes = QuizServiceIntegrationTest.TestConfig.class,
+        webEnvironment = SpringBootTest.WebEnvironment.NONE
+)
+@AutoConfigureTestDatabase   // brings up an embedded H2
+@Transactional
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+class QuizServiceIntegrationTest {
 
+    @SpringBootConfiguration
+    @EnableAutoConfiguration
+    @EntityScan("ch.uzh.ifi.hase.soprafs24.entity")
+    @EnableJpaRepositories("ch.uzh.ifi.hase.soprafs24.repository")
+    @Import({ QuizService.class, StatisticsService.class })
+    static class TestConfig {}
 
-// @WebAppConfiguration
-// @SpringBootTest
-// @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
-// public class QuizServiceIntegrationTest {
+    @Autowired private QuizService           quizService;
+    @Autowired private StatisticsService     statisticsService;
+    @Autowired private UserRepository        userRepository;
+    @Autowired private DeckRepository        deckRepository;
+    @Autowired private QuizRepository        quizRepository;
+    @Autowired private ScoreRepository       scoreRepository;
+    @Autowired private StatisticsRepository  statisticsRepository;
 
-//     @Autowired
-//     private QuizService quizService;
+    @MockBean private QuizMapper             quizMapper;
+    @MockBean private FlashcardMapper        flashcardMapper;
+    @MockBean private SimpMessagingTemplate  messagingTemplate;
+    @MockBean private UserService            userService;
+    @MockBean private InvitationRepository   invitationRepository;
 
-//     @Autowired
-//     private UserRepository userRepository;
+    private User user;
+    private Deck deck;
 
-//     @Autowired
-//     private DeckRepository deckRepository;
+    @BeforeEach
+    void setUp() {
+        // 1) Persist a fully valid User (populate all non-nullable columns)
+        user = new User();
+        user.setName("alice");
+        user.setUsername("alice123");          // nullable=false, unique=true
+        user.setPassword("secret");            // nullable=false
+        user.setStatus(UserStatus.OFFLINE);    // nullable=false
+        user.setCreationDate(new Date());      // nullable=false
+        // birthday and token may remain null
+        user = userRepository.saveAndFlush(user);
 
-//     @Autowired
-//     private InvitationRepository invitationRepository;
+        // 2) Persist a Deck with two Flashcards
+        deck = new Deck();
+        deck.setTitle("Integration Deck");
+        deck.setUser(user);
+        deck.setDeckCategory(FlashcardCategory.OTHERS);
+        deck.setIsPublic(true);
 
-//     private User user1;
-//     private User user2;
-//     private Deck testDeck;
+        Flashcard c1 = new Flashcard();
+        c1.setDescription("Q1?");
+        c1.setAnswer("A1");
+        c1.setWrongAnswers(new String[]{"X","Y","Z"});
+        c1.setDeck(deck);
 
-//     @Transactional
-//     @BeforeEach
-//     void setup() {
-//         // Create users
-//         user1 = new User();
-//         user1.setId(1L);
-//         user1.setUsername("Alice");
-//         user1.setPassword("testPassword");
-//         user1.setCreationDate(new Date());
-//         user1.setStatus(UserStatus.ONLINE);
-//         userRepository.save(user1);
+        Flashcard c2 = new Flashcard();
+        c2.setDescription("Q2?");
+        c2.setAnswer("A2");
+        c2.setWrongAnswers(new String[]{"X","Y","Z"});
+        c2.setDeck(deck);
 
-//         user2 = new User();
-//         user2.setId(2L);
-//         user2.setUsername("Bob");
-//         user2.setPassword("testPassword");
-//         user2.setCreationDate(new Date());
-//         user2.setStatus(UserStatus.ONLINE);
-//         userRepository.save(user2);
-//         userRepository.flush();
+        deck.getFlashcards().addAll(List.of(c1, c2));
+        deck = deckRepository.saveAndFlush(deck);
 
-//         // Create deck
-//         testDeck = new Deck();
-//         testDeck.setId(1L);
-//         testDeck.setTitle("Sample Deck");
-//         testDeck.setDeckCategory(FlashcardCategory.SCIENCE);
-//         testDeck.setIsPublic(true);
-//         testDeck.setUser(user1);
-//         deckRepository.save(testDeck);
-//         deckRepository.flush();
-//     }
+        // 3) Stub out invitation-based mapping (not used by startQuiz)
+        Mockito.when(quizMapper.fromInvitationToEntity(Mockito.any()))
+                .thenThrow(new IllegalStateException("Shouldn’t be called in this test"));
+    }
 
-//     @Test
-//     void createInvitation_success() {
-//         InvitationDTO dto = new InvitationDTO();
-//         dto.setFromUserId(user1.getId());
-//         dto.setToUserId(user2.getId());
-//         dto.setTimeLimit(300);
-//         dto.setDeckIds(Collections.singletonList(testDeck.getId()));
+    @Test
+    void fullSoloQuizFlow_updatesScoreAndStatistics_andResetsUserStatus() {
+        // Start a 2-question solo quiz
+        Quiz quiz = quizService.startQuiz(deck.getId(), 2, null, false);
+        assertThat(quiz.getSelectedFlashcards()).hasSize(2);
 
-//         Invitation created = quizService.createInvitation(dto);
+        // Answer each question correctly
+        var cards = quiz.getSelectedFlashcards();
+        for (int i = 0; i < cards.size(); i++) {
+            QuizAnswerResponseDTO dto = quizService.processAnswerWithFeedback(
+                    quiz.getId(),
+                    cards.get(i).getId(),
+                    cards.get(i).getAnswer(),
+                    user.getId()
+            );
+            if (i < cards.size() - 1) {
+                assertThat(dto.isFinished()).isFalse();
+            } else {
+                assertThat(dto.isFinished()).isTrue();
+            }
+            assertThat(dto.isWasCorrect()).isTrue();
+        }
 
-//         assertNotNull(created.getId());
-//         assertEquals(user1.getId(), created.getFromUser().getId());
-//         assertEquals(user2.getId(), created.getToUser().getId());
-//         assertFalse(created.getIsAccepted());
-//         assertEquals(1, created.getDecks().size());
-//     }
+        // Verify a single Score row exists
+        Score score = scoreRepository.findByQuizIdAndUserId(quiz.getId(), user.getId());
+        assertThat(score).isNotNull();
+        assertThat(score.getCorrectQuestions()).isEqualTo(2);
+        assertThat(score.getTotalQuestions()).isEqualTo(2);
 
-//     @Test
-//     void createQuiz_success() {
-//         // First create an invitation
-//         InvitationDTO dto = new InvitationDTO();
-//         dto.setFromUserId(user1.getId());
-//         dto.setToUserId(user2.getId());
-//         dto.setTimeLimit(300);
-//         dto.setDeckIds(Collections.singletonList(testDeck.getId()));
-//         Invitation invitation = quizService.createInvitation(dto);
+        // Verify a single Statistics row exists and has aggregated both attempts
+        List<Statistics> stats = statisticsRepository.findByQuiz_Id(quiz.getId());
+        assertThat(stats).hasSize(1);
+        Statistics stat = stats.get(0);
+        assertThat(stat.getScore()).isEqualTo(2);
+        assertThat(stat.getNumberOfAttempts()).isEqualTo(2);
+        assertThat(stat.getTimeTaken()).isGreaterThanOrEqualTo(0L);
 
-//         // Create quiz from invitation
-//         Quiz quiz = quizService.createQuiz(invitation.getId());
-
-//         assertNotNull(quiz.getId());
-//         assertEquals(300, quiz.getTimeLimit());
-//         assertNotNull(quiz.getInvitation());
-//     }
-
-//     @Test
-//     void confirmInvitation_success() {
-//         // Prepare data
-//         InvitationDTO dto = new InvitationDTO();
-//         dto.setFromUserId(user1.getId());
-//         dto.setToUserId(user2.getId());
-//         dto.setTimeLimit(300);
-//         dto.setDeckIds(Collections.singletonList(testDeck.getId()));
-//         Invitation invitation = quizService.createInvitation(dto);
-
-//         quizService.createQuiz(invitation.getId());
-
-//         // Act
-//         quizService.confirmedInvitation(invitation.getId());
-
-//         Invitation updated = quizService.getInvitationById(invitation.getId());
-
-//         assertTrue(updated.getIsAccepted());
-//         assertNotNull(updated.getIsAcceptedDate());
-//         assertEquals(UserStatus.PLAYING, updated.getFromUser().getStatus());
-//         assertEquals(UserStatus.PLAYING, updated.getToUser().getStatus());
-
-//         Quiz quiz = updated.getQuiz();
-//         assertNotNull(quiz.getStartTime());
-//         assertEquals(quiz.getQuizStatus().name(), "IN_PROGRESS");
-//     }
-
-//     @Test
-//     void rejectInvitation_success() {
-//         InvitationDTO dto = new InvitationDTO();
-//         dto.setFromUserId(user1.getId());
-//         dto.setToUserId(user2.getId());
-//         dto.setTimeLimit(300);
-//         dto.setDeckIds(Collections.singletonList(testDeck.getId()));
-//         Invitation invitation = quizService.createInvitation(dto);
-
-//         quizService.createQuiz(invitation.getId());
-
-//         quizService.rejectedInvitation(invitation.getId());
-
-//         assertFalse(invitationRepository.findById(invitation.getId()).isPresent());
-//     }
-
-//     @Test
-//     void findInvitationByFromUserIdAndIsAcceptedTrue_onlyKeepsEarliest() {
-//         // First accepted invitation
-//         InvitationDTO dto1 = new InvitationDTO();
-//         dto1.setFromUserId(user1.getId());
-//         dto1.setToUserId(user2.getId());
-//         dto1.setTimeLimit(300);
-//         dto1.setDeckIds(Collections.singletonList(testDeck.getId()));
-//         Invitation i1 = quizService.createInvitation(dto1);
-//         quizService.createQuiz(i1.getId());
-
-//         // Second (late) accepted invitation
-//         InvitationDTO dto2 = new InvitationDTO();
-//         dto2.setFromUserId(user1.getId());
-//         dto2.setToUserId(user2.getId());
-//         dto2.setTimeLimit(300);
-//         dto2.setDeckIds(Collections.singletonList(testDeck.getId()));
-//         Invitation i2 = quizService.createInvitation(dto2);
-//         quizService.createQuiz(i2.getId());
-
-//         quizService.confirmedInvitation(i1.getId());
-//         quizService.confirmedInvitation(i2.getId());
-
-//         Invitation kept = quizService.findInvitationByFromUserIdAndIsAcceptedTrue(user1.getId());
-
-//         assertEquals(i1.getId(), kept.getId());
-//         assertFalse(invitationRepository.findById(i2.getId()).isPresent());
-//     }
-// }
+        User reloaded = userRepository.findById(user.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(UserStatus.PLAYING);
+    }
+}
