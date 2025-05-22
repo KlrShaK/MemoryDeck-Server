@@ -19,13 +19,13 @@ The backend is structured into modular RESTful components, each responsible for 
 
 ### Flashcard Controller & Service
 - **Files**: [FlashcardController.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/controller/FlashcardController.java), [FlashcardService.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/service/FlashcardService.java)
-- **Role**: Manages creation, retrieval, updating, and deletion of flashcards.
-- **Logic**: Works closely with deck data, ensuring each flashcard is linked to a specific deck. Facilitates core functionality for quizzes and learning.
+- **Role**: Manages creation, retrieval, updating, and deletion of decks and flashcards.
+- **Logic**: Handles all operations related to deck and flashcard entities. Each flashcard is associated with a deck, and the logic ensures proper grouping and consistency. This component supports the core content structure for the quizzes and plays a key role in user-driven content creation and memory training.
 
 ### Quiz Controller & Service
 - **Files**: [QuizController.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/controller/QuizController.java), [QuizService.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/service/QuizService.java)
 - **Role**: Generates quizzes from flashcards within a deck.
-- **Logic**: Randomizes questions, tracks user input, and supports interactive quiz experiences. Results can be used for statistics and performance tracking.
+- **Logic**: Randomizes questions, tracks user input, and supports interactive quiz experiences. Includes invitation logic and ensures real-time notification between users. Results can be used for statistics and performance tracking.
 
 ### Statistics Controller & Service
 - **Files**: [StatisticsController.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/controller/StatisticsController.java), [StatisticsService.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/service/StatisticsService.java)
