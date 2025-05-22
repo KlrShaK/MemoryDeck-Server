@@ -1,118 +1,109 @@
-# SoPra RESTful Service Template FS25
+# Memory Deck
 
-## Getting started with Spring Boot
--   Documentation: https://docs.spring.io/spring-boot/docs/current/reference/html/index.html
--   Guides: http://spring.io/guides
-    -   Building a RESTful Web Service: http://spring.io/guides/gs/rest-service/
-    -   Building REST services with Spring: https://spring.io/guides/tutorials/rest/
+## Introduction
 
-## Setup this Template with your IDE of choice
-Download your IDE of choice (e.g., [IntelliJ](https://www.jetbrains.com/idea/download/), [Visual Studio Code](https://code.visualstudio.com/), or [Eclipse](http://www.eclipse.org/downloads/)). Make sure Java 17 is installed on your system (for Windows, please make sure your `JAVA_HOME` environment variable is set to the correct version of Java).
+Memory Deck aims to help elderly individuals and those with memory loss retain valuable information through interactive flashcards. This is the backend of Memory Deck — a useful tool designed to help users (especially the elderly or those with memory challenges) retain information through interactive decks of flashcards. The app emphasizes simplicity and clarity, enhancing its usability for its target audience.
+<br><br>
+## Technologies Used
 
-### IntelliJ
-If you consider to use IntelliJ as your IDE of choice, you can make use of your free educational license [here](https://www.jetbrains.com/community/education/#students).
-1. File -> Open... -> SoPra server template
-2. Accept to import the project as a `gradle project`
-3. To build right click the `build.gradle` file and choose `Run Build`
+- Java
+- Google Cloud
+- OpenAI API
+- Unittest
+- Springboot
+- H2 DB
+<br><br>
+## High-Level Components
 
-### VS Code
-The following extensions can help you get started more easily:
--   `vmware.vscode-spring-boot`
--   `vscjava.vscode-spring-initializr`
--   `vscjava.vscode-spring-boot-dashboard`
--   `vscjava.vscode-java-pack`
+The backend is structured into modular RESTful components, each responsible for a core part of the Memory Deck system. These components follow a layered architecture with **Controllers** (handling HTTP requests), **Services** (business logic), and **Repositories** (database access).
 
-**Note:** You'll need to build the project first with Gradle, just click on the `build` command in the _Gradle Tasks_ extension. Then check the _Spring Boot Dashboard_ extension if it already shows `soprafs24` and hit the play button to start the server. If it doesn't show up, restart VS Code and check again.
+### Flashcard Controller & Service
+- **Files**: [FlashcardController.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/controller/FlashcardController.java), [FlashcardService.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/service/FlashcardService.java)
+- **Role**: Manages creation, retrieval, updating, and deletion of flashcards.
+- **Logic**: Works closely with deck data, ensuring each flashcard is linked to a specific deck. Facilitates core functionality for quizzes and learning.
 
-## Building with Gradle
+### Quiz Controller & Service
+- **Files**: [QuizController.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/controller/QuizController.java), [QuizService.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/service/QuizService.java)
+- **Role**: Generates quizzes from flashcards within a deck.
+- **Logic**: Randomizes questions, tracks user input, and supports interactive quiz experiences. Results can be used for statistics and performance tracking.
+
+### Statistics Controller & Service
+- **Files**: [StatisticsController.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/controller/StatisticsController.java), [StatisticsService.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/service/StatisticsService.java)
+- **Role**: Tracks and reports user progress and performance.
+- **Logic**: Calculates scores, monitors correct/incorrect answers, and provides data for feedback and therapy effectiveness.
+
+### User Controller & Service
+- **Files**: [UserController.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/controller/UserController.java), [UserService.java](https://github.com/KlrShaK/MemoryDeck-Server/blob/main/src/main/java/ch/uzh/ifi/hase/soprafs24/service/UserService.java)
+- **Role**: Handles user registration, authentication, and profile management.
+- **Logic**: Verifies unique usernames, manages user tokens, and stores metadata such as birthday or associated decks.
+<br><br>
+## Launch & Deployment
+
+To get the backend server up and running locally, follow these steps:
+
+### Prerequisites
+
+- Java 17+
+- Gradle (we use the Gradle Wrapper, so no need to install Gradle separately)
+- OpenAI API key
+- Google Cloud credentials
+
+### Running the Application
+
+#### 1. Clone the repository:
+
+```
+git clone https://github.com/yourusername/MemoryDeck-Server.git
+cd MemoryDeck-Server
+```
+
+#### 2. Add secrets:
+
+You will need to configure the following secrets as environment variables or in your GitHub repo if running CI/CD:
+- ```OPENAI_API_KEY```: Your OpenAI key for generating content or interactions.
+- ```GOOGLE_APPLICATION_CREDENTIALS```: Path to your Google Cloud credentials JSON file (used for storage or other GCP integrations).
+
+#### 3. Build the project:
+
+```
+./gradlew build
+```
+
+#### 4. Run the server:
+
+- Option 1: Via command line:
+```
+./gradlew bootRun
+```
+- Option 2: Launch directly in Visual Studio Code using the Spring Boot extension.
+
+#### 5. Running tests:
+```
+./gradlew test
+```
+
+### Building with Gradle
 You can use the local Gradle Wrapper to build the application.
 -   macOS: `./gradlew`
 -   Linux: `./gradlew`
 -   Windows: `./gradlew.bat`
 
-More Information about [Gradle Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html) and [Gradle](https://gradle.org/docs/).
+### Deployment
+For deployment (Google Cloud), make sure your environment has access to the required secrets listed above and configure your application.properties or application.yml accordingly. The project can be accessed through the URL: [https://sopra-fs25-group-40-client.vercel.app/](https://sopra-fs25-group-40-client.vercel.app/)
+<br><br>
 
-### Build
+## Roadmap
 
-```bash
-./gradlew build
-```
+Here are some possible features new contributors could add (includes the optional user story we did not implement):
+- **Search and Filter Decks**: Implement a search bar or filter tags to allow users to easily find specific decks.
+- **Flashcard Enhancements**: Support rich content in flashcards, such as audio clips or formatted text.
+- **Scheduled Test Reminders**: Implement a scheduling and automated email reminder system that will notify a user to take their daily test at a previously scheduled reminder time.
+<br><br>
+## License
+This project is licensed under the MIT License. See the [LICENSE](https://choosealicense.com/licenses/mit/) file for details.
+<br><br>
+## Authors and acknowledgement
 
-### Run
+This project has come to life thanks to the members of Group 40 of the SoPra module: Melih Serin (melih.serin@uzh.ch), Sarah Nabulsi (sarahosama.nabulsi@uzh.ch), Nicola Luder (nicola.luder@uzh.ch), Shaurya Kishore Panwar (shauryakishore.panwar@uzh.ch), and Leyla Khasiyeva (leyla.khasiyeva@uzh.ch). If you have any questions or comments, you can reach out to us at any of the mentioned email addresses.
 
-```bash
-./gradlew bootRun
-```
-
-You can verify that the server is running by visiting `localhost:8080` in your browser.
-
-### Test
-
-```bash
-./gradlew test
-```
-
-### Development Mode
-You can start the backend in development mode, this will automatically trigger a new build and reload the application
-once the content of a file has been changed.
-
-Start two terminal windows and run:
-
-`./gradlew build --continuous`
-
-and in the other one:
-
-`./gradlew bootRun`
-
-If you want to avoid running all tests with every change, use the following command instead:
-
-`./gradlew build --continuous -xtest`
-
-## API Endpoint Testing with Postman
-We recommend using [Postman](https://www.getpostman.com) to test your API Endpoints.
-
-## Debugging
-If something is not working and/or you don't know what is going on. We recommend using a debugger and step-through the process step-by-step.
-
-To configure a debugger for SpringBoot's Tomcat servlet (i.e. the process you start with `./gradlew bootRun` command), do the following:
-
-1. Open Tab: **Run**/Edit Configurations
-2. Add a new Remote Configuration and name it properly
-3. Start the Server in Debug mode: `./gradlew bootRun --debug-jvm`
-4. Press `Shift + F9` or the use **Run**/Debug "Name of your task"
-5. Set breakpoints in the application where you need it
-6. Step through the process one step at a time
-
-## Testing
-Have a look here: https://www.baeldung.com/spring-boot-testing
-
-<br>
-<br>
-<br>
-
-## Docker
-
-### Introduction
-This year, for the first time, Docker will be used to ease the process of deployment.\
-Docker is a tool that uses containers as isolated environments, ensuring that the application runs consistently and uniformly across different devices.\
-Everything in this repository is already set up to minimize your effort for deployment.\
-All changes to the main branch will automatically be pushed to dockerhub and optimized for production.
-
-### Setup
-1. **One** member of the team should create an account on [dockerhub](https://hub.docker.com/), _incorporating the group number into the account name_, for example, `SoPra_group_XX`.\
-2. This account then creates a repository on dockerhub with the _same name as the group's Github repository name_.\
-3. Finally, the person's account details need to be added as [secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository) to the group's repository:
-    - dockerhub_username (the username of the dockerhub account from step 1, for example, `SoPra_group_XX`)
-    - dockerhub_password (a generated PAT([personal access token](https://docs.docker.com/docker-hub/access-tokens/)) of the account with read and write access)
-    - dockerhub_repo_name (the name of the dockerhub repository from step 2)
-
-### Pull and run
-Once the image is created and has been successfully pushed to dockerhub, the image can be run on any machine.\
-Ensure that [Docker](https://www.docker.com/) is installed on the machine you wish to run the container.\
-First, pull (download) the image with the following command, replacing your username and repository name accordingly.
-
-```docker pull <dockerhub_username>/<dockerhub_repo_name>```
-
-Then, run the image in a container with the following command, again replacing _<dockerhub_username>_ and _<dockerhub_repo_name>_ accordingly.
-
-```docker run -p 3000:3000 <dockerhub_username>/<dockerhub_repo_name>```
+<br><br>
